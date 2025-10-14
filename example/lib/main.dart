@@ -4,9 +4,38 @@ import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the deferred deep links plugin
+  // OPTION 1: Initialize with BOTH normal and deferred deep links
+  // This provides full functionality including post-install attribution
   await FlutterAwesomeDeeplink.initialize(
-    config: DeferredLinkConfig(
+    // Required: Normal deep link configuration
+    normalConfig: NormalDeepLinkConfig(
+      appScheme: 'awesomedeeplink',
+      validDomains: ['example.com', 'myapp.example.com'],
+      validPaths: ['/app/', '/content/'],
+      enableLogging: true, // Enable for demo
+      onNormalLink: (uri) {
+        // Handle normal deep links (real-time when app is installed)
+        print('🔗 Normal deep link received: $uri');
+        final id = uri.queryParameters['id'];
+        final type = uri.queryParameters['type'] ?? 'unknown';
+
+        // In a real app, you would navigate based on the URI:
+        if (uri.path.contains('/content')) {
+          print('  → Would navigate to content with ID: $id, type: $type');
+          // GoRouter.of(context).push('/content/$id');
+        } else if (uri.path.contains('/challenge')) {
+          print('  → Would navigate to challenge with ID: $id, type: $type');
+          // GoRouter.of(context).push('/challenge/$id');
+        } else {
+          print('  → Would handle generic deep link with ID: $id, type: $type');
+        }
+      },
+      onError: (error) {
+        print('❌ Normal deep link error: $error');
+      },
+    ),
+    // Optional: Deferred deep link configuration (for post-install attribution)
+    deferredConfig: DeferredLinkConfig(
       appScheme: 'awesomedeeplink',
       validDomains: ['example.com', 'myapp.example.com'],
       validPaths: ['/app/', '/content/'],
@@ -14,7 +43,7 @@ void main() async {
       maxLinkAge: Duration(days: 7),
       enableLogging: true, // Enable for demo
       onDeferredLink: (link) {
-        // Handle deferred link - this would typically navigate to content
+        // Handle deferred link (after app install from store)
         print('📱 Deferred link received: $link');
         // In a real app, you might do:
         // MyRouter.handleDeepLink(link);
@@ -22,13 +51,34 @@ void main() async {
         // GoRouter.of(context).push('/content?id=${extractId(link)}');
       },
       onError: (error) {
-        print('❌ Deferred link error: $error');
+        print('❌ Deferred deep link error: $error');
       },
       onAttributionData: (data) {
         print('📊 Attribution data: $data');
       },
     ),
   );
+
+  // OPTION 2: Initialize with NORMAL deep links only (simpler setup)
+  // Uncomment this and comment out the above if you only need real-time deep links
+  /*
+  await FlutterAwesomeDeeplink.initialize(
+    normalConfig: NormalDeepLinkConfig(
+      appScheme: 'awesomedeeplink',
+      validDomains: ['example.com', 'myapp.example.com'],
+      validPaths: ['/app/', '/content/'],
+      enableLogging: true,
+      onNormalLink: (uri) {
+        print('🔗 Normal deep link received: $uri');
+        // Handle navigation here
+      },
+      onError: (error) {
+        print('❌ Deep link error: $error');
+      },
+    ),
+    // No deferredConfig = no post-install attribution
+  );
+  */
 
   runApp(const MyApp());
 }
@@ -451,6 +501,98 @@ class _MyHomePageState extends State<MyHomePage> {
 
                   const SizedBox(height: 16),
 
+                  // Normal Deep Link Testing Section
+                  Card(
+                    color: Colors.blue.shade50,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Normal Deep Link Testing',
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue.shade800,
+                                ),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Test real-time deep links (when app is already installed):',
+                            style: TextStyle(color: Colors.blue.shade700),
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Test buttons for different deep link types
+                          Column(
+                            children: [
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _testNormalDeepLink(
+                                    'awesomedeeplink://content?id=test123&type=demo',
+                                  ),
+                                  icon: const Icon(Icons.link),
+                                  label: const Text('Test Custom Scheme Link'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _testNormalDeepLink(
+                                    'https://example.com/app/challenge?id=456&type=challenge',
+                                  ),
+                                  icon: const Icon(Icons.web),
+                                  label: const Text('Test Web Deep Link'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton.icon(
+                                  onPressed: () => _clearLastProcessedLink(),
+                                  icon: const Icon(Icons.clear),
+                                  label: const Text(
+                                    'Clear Duplicate Prevention',
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.orange,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade100,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Note: Normal deep links are handled in real-time via the onNormalLink callback. '
+                              'Check the console for output when testing these links.',
+                              style: TextStyle(fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
+
                   // Testing Tools Section
                   Card(
                     child: Padding(
@@ -528,6 +670,78 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ),
     );
+  }
+
+  /// Test normal deep link handling by simulating a deep link
+  void _testNormalDeepLink(String testLink) {
+    try {
+      final uri = Uri.parse(testLink);
+
+      // Show a snackbar to indicate the test
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Testing normal deep link: $testLink'),
+          backgroundColor: Colors.blue,
+        ),
+      );
+
+      // The actual deep link would be handled by the app_links package
+      // For testing purposes, we'll just validate the link
+      final isValid = FlutterAwesomeDeeplink.isValidDeepLink(testLink);
+
+      print('🧪 Testing normal deep link: $testLink');
+      print('   Valid: $isValid');
+
+      if (isValid) {
+        final id = uri.queryParameters['id'];
+        final type = uri.queryParameters['type'];
+        print('   Extracted ID: $id, Type: $type');
+
+        // In a real scenario, this would trigger the onNormalLink callback
+        // which we set up in main() - but since this is a manual test,
+        // we just log the information
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Valid deep link! ID: $id, Type: $type'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Invalid deep link format'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error testing normal deep link: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  /// Clear the last processed link to test duplicate prevention
+  void _clearLastProcessedLink() {
+    try {
+      FlutterAwesomeDeeplink.clearLastProcessedLink();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Cleared duplicate prevention cache'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+
+      print('🧹 Cleared last processed link cache');
+    } catch (e) {
+      print('❌ Error clearing last processed link: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
   }
 
   String _formatMetadata(Map<String, dynamic> metadata) {

@@ -31,7 +31,7 @@ class InstallReferrerService {
   late final String _installTimeKey;
 
   InstallReferrerService(this.config) {
-    _linkValidator = LinkValidator(config);
+    _linkValidator = LinkValidator.fromDeferredConfig(config);
 
     // Initialize configurable storage keys
     _firstLaunchKey = '${config.storageKeyPrefix}first_launch_completed';

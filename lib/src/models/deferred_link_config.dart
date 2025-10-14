@@ -1,7 +1,9 @@
-/// Configuration class for Flutter Awesome Deeplink plugin
+/// Configuration class for deferred deep link attribution
 ///
 /// Provides comprehensive configuration options for deferred deep link attribution
 /// with platform-optimized strategies and privacy-conscious defaults.
+///
+/// **Note**: This is optional. If you only need normal deep links, use NormalDeepLinkConfig instead.
 class DeferredLinkConfig {
   /// Custom app scheme (e.g., 'myapp', 'challengeapp')
   /// Used for validating custom scheme deep links like myapp://content?id=123
@@ -150,6 +152,20 @@ class DeferredLinkConfig {
       enableLogging: enableLogging ?? this.enableLogging,
       attributionTimeout: attributionTimeout ?? this.attributionTimeout,
     );
+  }
+
+  /// Convert configuration to map for debugging and analytics
+  Map<String, dynamic> toMap() {
+    return {
+      'appScheme': appScheme,
+      'validDomains': validDomains,
+      'validPaths': validPaths,
+      'enableIOSClipboard': enableIOSClipboard,
+      'maxLinkAgeHours': maxLinkAge.inHours,
+      'storageKeyPrefix': storageKeyPrefix,
+      'enableLogging': enableLogging,
+      'attributionTimeoutSeconds': attributionTimeout.inSeconds,
+    };
   }
 
   @override

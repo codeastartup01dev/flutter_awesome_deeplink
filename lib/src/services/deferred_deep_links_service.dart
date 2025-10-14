@@ -1,27 +1,35 @@
+import 'dart:async';
 import 'dart:io';
 
+import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/normal_deep_link_config.dart';
 import '../models/deferred_link_config.dart';
 import '../utils/link_validator.dart';
 import '../utils/logger.dart';
 import 'deferred_link_storage_service.dart';
 import 'install_referrer_service.dart';
 
-/// Main service for platform-optimized deferred deep link attribution
+/// Main service for platform-optimized deep link handling
 ///
-/// Orchestrates multiple attribution methods with platform-specific strategies:
-/// - **Android**: Install Referrer API (95%+ success) → Storage fallback
-/// - **iOS**: Optional clipboard detection (90%+ success) → Storage fallback
-/// - **Cross-platform**: Persistent storage service (final fallback)
+/// Handles both normal deep links and deferred deep links with platform-specific strategies:
+/// - **Normal Deep Links**: Real-time deep links using app_links package
+/// - **Deferred Deep Links** (optional): Post-install attribution with multiple strategies:
+///   - **Android**: Install Referrer API (95%+ success) → Storage fallback
+///   - **iOS**: Optional clipboard detection (90%+ success) → Storage fallback
+///   - **Cross-platform**: Persistent storage service (final fallback)
 ///
 /// Provides 96%+ overall attribution success rates with privacy-conscious defaults.
 class DeferredDeepLinksService {
-  final DeferredLinkConfig config;
+  final NormalDeepLinkConfig normalConfig;
+  final DeferredLinkConfig? deferredConfig;
+
   late final LinkValidator _linkValidator;
-  late final DeferredLinkStorageService _storageService;
-  late final InstallReferrerService _installReferrerService;
+  late final DeferredLinkStorageService? _storageService;
+  late final InstallReferrerService? _installReferrerService;
   late final PluginLogger _logger;
+  late final AppLinks _appLinks;
 
   /// Flag to track if initialization is complete
   bool _isInitialized = false;
@@ -29,14 +37,31 @@ class DeferredDeepLinksService {
   /// Track the last processed link to prevent duplicate handling
   String? _lastProcessedLink;
 
-  DeferredDeepLinksService(this.config) {
-    _logger = PluginLogger(enableLogging: config.enableLogging);
-    _linkValidator = LinkValidator(config);
-    _storageService = DeferredLinkStorageService(config);
-    _installReferrerService = InstallReferrerService(config);
+  /// Stream subscription for normal deep links
+  StreamSubscription<Uri>? _linkSubscription;
 
+  DeferredDeepLinksService({required this.normalConfig, this.deferredConfig}) {
+    // Use logging from either config (prefer deferred if available)
+    final enableLogging =
+        deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+    _logger = PluginLogger(enableLogging: enableLogging);
+
+    // Create link validator using normal config (both configs should have same validation rules)
+    _linkValidator = LinkValidator.fromNormalConfig(normalConfig);
+
+    // Only create deferred services if deferred config is provided
+    if (deferredConfig != null) {
+      _storageService = DeferredLinkStorageService(deferredConfig!);
+      _installReferrerService = InstallReferrerService(deferredConfig!);
+      _logger.i('iOS clipboard enabled: ${deferredConfig!.enableIOSClipboard}');
+    } else {
+      _storageService = null;
+      _installReferrerService = null;
+      _logger.i('Deferred deep links disabled (no deferredConfig provided)');
+    }
+
+    _appLinks = AppLinks();
     _logger.i('Initialized for ${Platform.operatingSystem}');
-    _logger.i('iOS clipboard enabled: ${config.enableIOSClipboard}');
   }
 
   /// Initialize the deferred deep links service
@@ -50,20 +75,24 @@ class DeferredDeepLinksService {
   /// ```
   Future<void> initialize() async {
     if (_isInitialized) {
-      if (config.enableLogging) {
+      final enableLogging =
+          deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+      if (enableLogging) {
         print('DeferredDeepLinksService: Already initialized');
       }
       return;
     }
 
     try {
-      if (config.enableLogging) {
+      final enableLogging =
+          deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+      if (enableLogging) {
         print('DeferredDeepLinksService: Starting initialization...');
       }
 
-      // Skip deep links for web platform (not applicable)
+      // Skip deferred links for web platform (not applicable)
       if (kIsWeb) {
-        if (config.enableLogging) {
+        if (enableLogging) {
           print(
             'DeferredDeepLinksService: Web platform - deferred links not applicable',
           );
@@ -72,19 +101,30 @@ class DeferredDeepLinksService {
         return;
       }
 
-      // Process any stored deferred deep links from previous sessions
-      await _processStoredDeferredLinks();
+      // Process any stored deferred deep links from previous sessions (only if deferred config provided)
+      if (deferredConfig != null) {
+        await _processStoredDeferredLinks();
+      }
+
+      // Set up normal deep link handling using app_links
+      await _setupNormalDeepLinkHandling();
 
       _isInitialized = true;
 
-      if (config.enableLogging) {
+      if (enableLogging) {
         print('DeferredDeepLinksService: ✅ Initialization complete');
       }
     } catch (e) {
-      if (config.enableLogging) {
+      final enableLogging =
+          deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+      if (enableLogging) {
         print('DeferredDeepLinksService: ❌ Initialization failed: $e');
       }
-      config.onError?.call('Failed to initialize deferred deep links: $e');
+      // Call error callback from either config
+      deferredConfig?.onError?.call(
+            'Failed to initialize deferred deep links: $e',
+          ) ??
+          normalConfig.onError?.call('Failed to initialize deep links: $e');
     }
   }
 
@@ -95,6 +135,13 @@ class DeferredDeepLinksService {
   /// - **iOS**: Clipboard detection (if enabled) → Storage Service fallback
   /// - **Other**: Storage Service only
   Future<void> _processStoredDeferredLinks() async {
+    // Only process deferred links if deferred config is provided
+    if (deferredConfig == null ||
+        _installReferrerService == null ||
+        _storageService == null) {
+      return;
+    }
+
     final stopwatch = Stopwatch()..start();
 
     try {
@@ -103,18 +150,18 @@ class DeferredDeepLinksService {
 
       if (Platform.isAndroid) {
         // 🤖 ANDROID STRATEGY: Prioritize Install Referrer API
-        if (config.enableLogging) {
+        if (deferredConfig!.enableLogging) {
           print(
             'DeferredDeepLinksService: Using Android-optimized attribution strategy',
           );
         }
 
         // 1. PRIMARY: Install Referrer API (95%+ success rate)
-        deferredLink = await _installReferrerService
+        deferredLink = await _installReferrerService!
             .extractDeferredLinkFromReferrer();
         if (deferredLink != null) {
           source = 'android_install_referrer';
-          if (config.enableLogging) {
+          if (deferredConfig!.enableLogging) {
             print(
               'DeferredDeepLinksService: ✅ Android Install Referrer attribution successful',
             );
@@ -124,217 +171,141 @@ class DeferredDeepLinksService {
           deferredLink = await _storageService.getStoredDeferredLink();
           if (deferredLink != null) {
             source = 'storage_service_android_fallback';
-            if (config.enableLogging) {
+            if (deferredConfig!.enableLogging) {
               print(
-                'DeferredDeepLinksService: ✅ Android Storage Service fallback successful',
+                'DeferredDeepLinksService: ✅ Storage service Android fallback successful',
               );
             }
           }
         }
       } else if (Platform.isIOS) {
         // 🍎 iOS STRATEGY: Clipboard (if enabled) → Storage Service fallback
-        if (config.enableLogging) {
+        if (deferredConfig!.enableLogging) {
           print(
             'DeferredDeepLinksService: Using iOS-optimized attribution strategy',
           );
         }
 
         // 1. PRIMARY: Install Referrer/Clipboard (90%+ success rate when enabled)
-        if (config.enableIOSClipboard) {
-          deferredLink = await _installReferrerService
+        if (deferredConfig!.enableIOSClipboard) {
+          deferredLink = await _installReferrerService!
               .extractDeferredLinkFromReferrer();
           if (deferredLink != null) {
             source = 'ios_clipboard';
-            if (config.enableLogging) {
+            if (deferredConfig!.enableLogging) {
               print(
-                'DeferredDeepLinksService: ✅ iOS clipboard attribution successful',
+                'DeferredDeepLinksService: ✅ iOS Clipboard attribution successful',
               );
             }
           }
-        } else if (config.enableLogging) {
-          print(
-            'DeferredDeepLinksService: iOS clipboard disabled - skipping to storage fallback',
-          );
+        } else {
+          if (deferredConfig!.enableLogging) {
+            print(
+              'DeferredDeepLinksService: iOS clipboard disabled, checking storage only',
+            );
+          }
         }
 
         // 2. FALLBACK: Storage Service for iOS
+        // 2. FALLBACK: Storage Service for iOS
         if (deferredLink == null) {
-          deferredLink = await _storageService.getStoredDeferredLink();
+          deferredLink = await _storageService!.getStoredDeferredLink();
           if (deferredLink != null) {
-            source = 'storage_service_ios_fallback';
-            if (config.enableLogging) {
+            source = deferredConfig!.enableIOSClipboard
+                ? 'storage_service_ios_fallback'
+                : 'storage_service_ios_only';
+            if (deferredConfig!.enableLogging) {
               print(
-                'DeferredDeepLinksService: ✅ iOS Storage Service fallback successful',
+                'DeferredDeepLinksService: ✅ Storage service iOS ${deferredConfig!.enableIOSClipboard ? "fallback" : "successful (clipboard disabled)"} successful',
               );
             }
           }
         }
       } else {
         // 🌐 OTHER PLATFORMS: Use storage service as primary
-        if (config.enableLogging) {
+        if (deferredConfig!.enableLogging) {
           print(
-            'DeferredDeepLinksService: Using storage-first strategy for ${Platform.operatingSystem}',
+            'DeferredDeepLinksService: Using storage-first strategy for other platforms',
           );
         }
-
-        deferredLink = await _storageService.getStoredDeferredLink();
+        deferredLink = await _storageService!.getStoredDeferredLink();
         if (deferredLink != null) {
           source = 'storage_service_primary';
-          if (config.enableLogging) {
+          if (deferredConfig!.enableLogging) {
             print(
-              'DeferredDeepLinksService: ✅ Storage Service attribution successful',
+              'DeferredDeepLinksService: ✅ Storage service attribution successful',
             );
           }
         }
       }
 
       if (deferredLink == null) {
-        if (config.enableLogging) {
+        if (deferredConfig!.enableLogging) {
           print(
             'DeferredDeepLinksService: No deferred deep link found from any source',
           );
         }
-
-        // Report no attribution found
-        final result = AttributionResult.failure(
-          source: source,
-          platform: Platform.operatingSystem,
-          processingTime: stopwatch.elapsed,
-          error: 'No deferred link found',
-        );
-        config.onAttributionData?.call(result.toMap());
         return;
       }
 
-      if (config.enableLogging) {
+      if (deferredConfig!.enableLogging) {
         print(
-          'DeferredDeepLinksService: Processing deferred deep link from $source',
+          'DeferredDeepLinksService: Processing deferred deep link from $source: $deferredLink',
         );
-      }
-
-      // Validate and handle the found link
-      await _handleDeferredLink(deferredLink, source, stopwatch.elapsed);
-
-      // Clear the processed deferred link from storage (if from storage)
-      if (source.contains('storage_service')) {
-        await _storageService.clearStoredDeferredLink();
-        if (config.enableLogging) {
-          print(
-            'DeferredDeepLinksService: Cleared processed link from storage',
-          );
-        }
-      }
-    } catch (e) {
-      // Report attribution error
-      final result = AttributionResult.failure(
-        source: 'error',
-        platform: Platform.operatingSystem,
-        processingTime: stopwatch.elapsed,
-        error: e.toString(),
-      );
-      config.onAttributionData?.call(result.toMap());
-
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Error processing stored deferred links: $e',
-        );
-      }
-      config.onError?.call('Failed to process deferred links: $e');
-    } finally {
-      stopwatch.stop();
-    }
-  }
-
-  /// Handle a found deferred link with validation and callback
-  Future<void> _handleDeferredLink(
-    String deferredLink,
-    String source,
-    Duration processingTime,
-  ) async {
-    try {
-      // Create a unique identifier for this link to prevent duplicate processing
-      final linkIdentifier = deferredLink.hashCode.toString();
-
-      // Check if this link was already processed recently
-      if (_lastProcessedLink == linkIdentifier) {
-        if (config.enableLogging) {
-          print('DeferredDeepLinksService: Skipping duplicate link processing');
-        }
-        return;
       }
 
       // Validate the deferred link
       if (!_linkValidator.isValidDeepLink(deferredLink)) {
-        if (config.enableLogging) {
+        if (deferredConfig!.enableLogging) {
           print(
             'DeferredDeepLinksService: Invalid deferred link format: $deferredLink',
           );
         }
-
-        // Report validation failure
-        final result = AttributionResult.failure(
-          source: source,
-          platform: Platform.operatingSystem,
-          processingTime: processingTime,
-          error: 'Invalid link format',
-          metadata: {'link': deferredLink},
+        deferredConfig!.onError?.call(
+          'Invalid deferred link format: $deferredLink',
         );
-        config.onAttributionData?.call(result.toMap());
-        config.onError?.call('Invalid deferred link format: $deferredLink');
+        await _storageService!.clearStoredDeferredLink(); // Clear invalid link
         return;
       }
 
-      // Report successful attribution
-      final result = AttributionResult.success(
+      // Call the deferred link callback
+      deferredConfig!.onDeferredLink?.call(deferredLink);
+
+      // Clear the processed deferred link
+      await _storageService!.clearStoredDeferredLink();
+
+      final processingTime = stopwatch.elapsed;
+      final attributionResult = AttributionResult.success(
         link: deferredLink,
         source: source,
         platform: Platform.operatingSystem,
         processingTime: processingTime,
-        metadata: {
-          'linkId': _linkValidator.extractId(deferredLink),
-          'parameters': _linkValidator.extractParameters(deferredLink),
-        },
+        metadata: {'config': deferredConfig!.toMap()},
       );
-      config.onAttributionData?.call(result.toMap());
+      deferredConfig!.onAttributionData?.call(attributionResult.toMap());
 
-      // Call the configured callback with the deferred link
-      if (config.onDeferredLink != null) {
-        config.onDeferredLink!(deferredLink);
-        if (config.enableLogging) {
-          print(
-            'DeferredDeepLinksService: ✅ Successfully processed deferred link from $source',
-          );
-        }
-      } else if (config.enableLogging) {
+      if (deferredConfig!.enableLogging) {
         print(
-          'DeferredDeepLinksService: ⚠️ No onDeferredLink callback configured',
+          'DeferredDeepLinksService: Successfully processed deferred link from $source',
         );
       }
-
-      // Mark this link as processed
-      _lastProcessedLink = linkIdentifier;
-
-      // Clear the last processed link after a delay to allow for legitimate duplicates
-      Future.delayed(const Duration(seconds: 5), () {
-        if (_lastProcessedLink == linkIdentifier) {
-          _lastProcessedLink = null;
-        }
-      });
     } catch (e) {
-      // Report callback error
-      final result = AttributionResult.failure(
-        source: source,
+      stopwatch.stop();
+      final processingTime = stopwatch.elapsed;
+      final attributionResult = AttributionResult.failure(
+        source: 'unknown',
         platform: Platform.operatingSystem,
         processingTime: processingTime,
-        error: 'Callback error: $e',
-        metadata: {'link': deferredLink},
+        error: e.toString(),
+        metadata: {'config': deferredConfig?.toMap()},
       );
-      config.onAttributionData?.call(result.toMap());
-
-      if (config.enableLogging) {
-        print('DeferredDeepLinksService: Error handling deferred link: $e');
+      deferredConfig!.onAttributionData?.call(attributionResult.toMap());
+      if (deferredConfig!.enableLogging) {
+        print(
+          'DeferredDeepLinksService: Error processing stored deferred links: $e',
+        );
       }
-      config.onError?.call('Failed to handle deferred link: $e');
+      deferredConfig!.onError?.call('Error processing deferred links: $e');
     }
   }
 
@@ -347,120 +318,61 @@ class DeferredDeepLinksService {
   /// ```dart
   /// await service.storeDeferredDeepLink('myapp://content?id=123');
   /// ```
-  Future<void> storeDeferredDeepLink(String deepLinkUrl) async {
-    try {
-      // Validate the link before storing
-      if (!_linkValidator.isValidDeepLink(deepLinkUrl)) {
-        if (config.enableLogging) {
-          print(
-            'DeferredDeepLinksService: Cannot store invalid deep link: $deepLinkUrl',
-          );
-        }
-        config.onError?.call('Cannot store invalid deep link format');
-        return;
-      }
-
-      await _storageService.storeDeferredLink(deepLinkUrl);
-
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Stored deferred deep link for later processing',
-        );
-      }
-    } catch (e) {
-      if (config.enableLogging) {
-        print('DeferredDeepLinksService: Error storing deferred deep link: $e');
-      }
-      config.onError?.call('Failed to store deferred deep link: $e');
+  /// Store a deferred deep link (only if deferred config is provided)
+  Future<void> storeDeferredLink(String deepLinkUrl) async {
+    if (deferredConfig == null || _storageService == null) {
+      _logger.w('Deferred deep links are disabled, cannot store link.');
+      return;
     }
+    await _storageService!.storeDeferredLink(deepLinkUrl);
   }
 
-  /// Get stored deferred deep link (for debugging)
-  ///
-  /// Returns the currently stored deferred link if any, null otherwise.
-  /// Useful for debugging and testing.
+  /// Get stored deferred deep link (only if deferred config is provided)
   Future<String?> getStoredDeferredLink() async {
-    try {
-      return await _storageService.getStoredDeferredLink();
-    } catch (e) {
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Error getting stored deferred deep link: $e',
-        );
-      }
+    if (deferredConfig == null || _storageService == null) {
+      _logger.w(
+        'Deferred deep links are disabled, no stored link to retrieve.',
+      );
       return null;
     }
+    return await _storageService!.getStoredDeferredLink();
   }
 
-  /// Get stored deferred link metadata (for debugging)
-  ///
-  /// Returns metadata about the stored link including age, platform, etc.
-  /// Useful for debugging and analytics.
+  /// Get stored deferred link metadata (only if deferred config is provided)
   Future<Map<String, dynamic>?> getStoredDeferredLinkMetadata() async {
-    try {
-      return await _storageService.getStoredLinkMetadata();
-    } catch (e) {
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Error getting deferred link metadata: $e',
-        );
-      }
+    if (deferredConfig == null || _storageService == null) {
+      _logger.w('Deferred deep links are disabled, no metadata available.');
       return null;
     }
+    return await _storageService!.getStoredLinkMetadata();
   }
 
-  /// Clear stored deferred deep link
-  ///
-  /// Removes any stored deferred link. Useful for testing or manual cleanup.
+  /// Clear stored deferred deep link (only if deferred config is provided)
   Future<void> clearStoredDeferredLink() async {
-    try {
-      await _storageService.clearStoredDeferredLink();
-      if (config.enableLogging) {
-        print('DeferredDeepLinksService: Cleared stored deferred link');
-      }
-    } catch (e) {
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Error clearing stored deferred link: $e',
-        );
-      }
-      config.onError?.call('Failed to clear stored deferred link: $e');
+    if (deferredConfig == null || _storageService == null) {
+      _logger.w('Deferred deep links are disabled, no stored link to clear.');
+      return;
     }
+    await _storageService!.clearStoredDeferredLink();
   }
 
-  /// Get attribution metadata for debugging and analytics
-  ///
-  /// Returns comprehensive information about the attribution system state.
-  /// Useful for debugging, analytics, and monitoring.
+  /// Get attribution metadata (only if deferred config is provided)
   Future<Map<String, dynamic>> getAttributionMetadata() async {
-    try {
-      final installReferrerMetadata = await _installReferrerService
-          .getAttributionMetadata();
-      final storageMetadata = await _storageService.getStoredLinkMetadata();
-
+    if (deferredConfig == null || _installReferrerService == null) {
+      _logger.w(
+        'Deferred deep links are disabled, no attribution metadata available.',
+      );
       return {
         'isInitialized': _isInitialized,
         'platform': Platform.operatingSystem,
-        'config': {
-          'appScheme': config.appScheme,
-          'validDomains': config.validDomains,
-          'validPaths': config.validPaths,
-          'enableIOSClipboard': config.enableIOSClipboard,
-          'maxLinkAgeHours': config.maxLinkAge.inHours,
-          'enableLogging': config.enableLogging,
-        },
-        'installReferrer': installReferrerMetadata,
-        'storage': storageMetadata,
-        'lastProcessedLink': _lastProcessedLink,
+        'deferred_links_enabled': false,
+        'error': 'Deferred deep links are disabled',
       };
-    } catch (e) {
-      if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: Error getting attribution metadata: $e',
-        );
-      }
-      return {'error': e.toString()};
     }
+    final metadata = await _installReferrerService!.getAttributionMetadata();
+    metadata['config'] = deferredConfig!.toMap();
+    metadata['deferred_links_enabled'] = true;
+    return metadata;
   }
 
   /// Validate a deep link against the current configuration
@@ -487,47 +399,141 @@ class DeferredDeepLinksService {
     return _linkValidator.extractParameters(link);
   }
 
-  /// Reset first launch flag (useful for testing)
+  /// Set up normal deep link handling using app_links package
   ///
-  /// Resets the first launch detection, allowing deferred link attribution
-  /// to be tested again. Should only be used for testing purposes.
-  Future<void> resetFirstLaunchFlag() async {
+  /// This handles real-time deep links when the app is already installed
+  /// and running, similar to your existing deep link service.
+  Future<void> _setupNormalDeepLinkHandling() async {
     try {
-      await _installReferrerService.resetFirstLaunchFlag();
-      if (config.enableLogging) {
-        print('DeferredDeepLinksService: Reset first launch flag');
-      }
-    } catch (e) {
-      if (config.enableLogging) {
+      if (normalConfig.enableLogging) {
         print(
-          'DeferredDeepLinksService: Error resetting first launch flag: $e',
+          'DeferredDeepLinksService: Setting up normal deep link handling...',
         );
       }
-      config.onError?.call('Failed to reset first launch flag: $e');
+
+      // Handle initial link (app opened from deep link)
+      final Uri? initialLink = await _appLinks.getInitialLink();
+      if (initialLink != null) {
+        if (normalConfig.enableLogging) {
+          print(
+            'DeferredDeepLinksService: Processing initial link: $initialLink',
+          );
+        }
+        _handleNormalDeepLink(initialLink);
+      }
+
+      // Listen for subsequent deep link events
+      _linkSubscription = _appLinks.uriLinkStream.listen(
+        (Uri uri) {
+          if (normalConfig.enableLogging) {
+            print('DeferredDeepLinksService: Received normal deep link: $uri');
+          }
+          _handleNormalDeepLink(uri);
+        },
+        onError: (error) {
+          if (normalConfig.enableLogging) {
+            print(
+              'DeferredDeepLinksService: Error handling normal deep link: $error',
+            );
+          }
+          normalConfig.onError?.call('Normal deep link error: $error');
+        },
+      );
+
+      if (normalConfig.enableLogging) {
+        print(
+          'DeferredDeepLinksService: ✅ Normal deep link handling setup complete',
+        );
+      }
+    } catch (e) {
+      if (normalConfig.enableLogging) {
+        print(
+          'DeferredDeepLinksService: ❌ Failed to setup normal deep link handling: $e',
+        );
+      }
+      normalConfig.onError?.call(
+        'Failed to setup normal deep link handling: $e',
+      );
     }
   }
 
-  /// Cleanup expired links
+  /// Handle normal deep links (real-time navigation)
   ///
-  /// Removes any expired deferred links from storage.
-  /// Can be called periodically for maintenance.
-  Future<bool> cleanupExpiredLinks() async {
+  /// This processes incoming deep links and calls the onNormalLink callback
+  /// with duplicate prevention similar to your existing implementation.
+  void _handleNormalDeepLink(Uri uri) {
     try {
-      return await _storageService.cleanupExpiredLinks();
-    } catch (e) {
-      if (config.enableLogging) {
-        print('DeferredDeepLinksService: Error during cleanup: $e');
+      // Create a unique identifier for this link to prevent duplicate processing
+      String linkIdentifier = '${uri.path}?${uri.query}';
+
+      // Check if this link was already processed recently
+      if (_lastProcessedLink == linkIdentifier) {
+        if (normalConfig.enableLogging) {
+          print(
+            'DeferredDeepLinksService: Skipping duplicate link: $linkIdentifier',
+          );
+        }
+        return;
       }
+
+      // Validate the deep link
+      if (!_linkValidator.isValidDeepLink(uri.toString())) {
+        if (normalConfig.enableLogging) {
+          print('DeferredDeepLinksService: Invalid deep link format: $uri');
+        }
+        normalConfig.onError?.call('Invalid deep link format: $uri');
+        return;
+      }
+
+      if (normalConfig.enableLogging) {
+        print(
+          'DeferredDeepLinksService: Processing valid normal deep link: $uri',
+        );
+      }
+
+      // Call the normal link callback if provided
+      normalConfig.onNormalLink?.call(uri);
+
+      // Mark this link as processed to prevent duplicate handling
+      _lastProcessedLink = linkIdentifier;
+
+      // Clear the last processed link after a delay to allow for legitimate duplicate links
+      Future.delayed(const Duration(seconds: 2), () {
+        if (_lastProcessedLink == linkIdentifier) {
+          _lastProcessedLink = null;
+        }
+      });
+    } catch (e) {
+      if (normalConfig.enableLogging) {
+        print('DeferredDeepLinksService: Error handling normal deep link: $e');
+      }
+      normalConfig.onError?.call('Error handling normal deep link: $e');
+    }
+  }
+
+  /// Reset first launch flag for deferred links (only if deferred config is provided)
+  Future<void> resetFirstLaunchFlag() async {
+    if (deferredConfig == null || _installReferrerService == null) {
+      _logger.w(
+        'Deferred deep links are disabled, cannot reset first launch flag.',
+      );
+      return;
+    }
+    await _installReferrerService!.resetFirstLaunchFlag();
+  }
+
+  /// Cleanup expired deferred links (only if deferred config is provided)
+  Future<bool> cleanupExpiredLinks() async {
+    if (deferredConfig == null || _storageService == null) {
+      _logger.w('Deferred deep links are disabled, no links to clean up.');
       return false;
     }
+    return await _storageService!.cleanupExpiredLinks();
   }
 
   /// Clear the last processed link (useful for testing)
   void clearLastProcessedLink() {
     _lastProcessedLink = null;
-    if (config.enableLogging) {
-      print('DeferredDeepLinksService: Cleared last processed link');
-    }
   }
 
   /// Get the last processed link identifier (useful for debugging)
@@ -535,4 +541,35 @@ class DeferredDeepLinksService {
 
   /// Check if the service is initialized
   bool get isInitialized => _isInitialized;
+
+  /// Dispose of resources used by the service
+  ///
+  /// Call this when you no longer need the service to clean up resources
+  /// and prevent memory leaks.
+  Future<void> dispose() async {
+    try {
+      final enableLogging =
+          deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+      if (enableLogging) {
+        print('DeferredDeepLinksService: Disposing resources...');
+      }
+
+      // Cancel the normal deep link subscription
+      await _linkSubscription?.cancel();
+      _linkSubscription = null;
+
+      // Reset initialization flag
+      _isInitialized = false;
+
+      if (enableLogging) {
+        print('DeferredDeepLinksService: ✅ Disposed successfully');
+      }
+    } catch (e) {
+      final enableLogging =
+          deferredConfig?.enableLogging ?? normalConfig.enableLogging;
+      if (enableLogging) {
+        print('DeferredDeepLinksService: ❌ Error during disposal: $e');
+      }
+    }
+  }
 }

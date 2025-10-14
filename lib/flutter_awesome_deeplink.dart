@@ -1,54 +1,68 @@
 /// Flutter Awesome Deeplink Plugin
 ///
-/// Platform-optimized deferred deep links for Flutter with 96%+ attribution success rates.
+/// Platform-optimized deferred deep links AND normal deep links for Flutter with 96%+ attribution success rates.
 ///
 /// **Key Features**:
 /// - 🤖 **Android**: Install Referrer API (95%+ success rate)
 /// - 🍎 **iOS**: Optional clipboard detection (90%+ success rate when enabled)
+/// - 🔗 **Normal Deep Links**: Real-time deep link handling using app_links
 /// - 🔒 **Privacy-first**: iOS clipboard checking is opt-in
 /// - 🌐 **Cross-platform**: Works on Android, iOS, and Web
 /// - ⚡ **High performance**: Minimal overhead and fast attribution
 /// - 🛡️ **Production-ready**: Comprehensive error handling and logging
 ///
-/// **Basic Usage**:
+/// **Basic Usage (Normal Deep Links Only)**:
 /// ```dart
 /// import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
 ///
-/// // Initialize with minimal configuration
+/// // Initialize with normal deep links only (simpler setup)
 /// await FlutterAwesomeDeeplink.initialize(
-///   config: DeferredLinkConfig(
+///   normalConfig: NormalDeepLinkConfig(
 ///     appScheme: 'myapp',
 ///     validDomains: ['myapp.com'],
-///     onDeferredLink: (link) {
-///       // Handle the deferred link
-///       MyRouter.handleDeepLink(link);
+///     onNormalLink: (uri) {
+///       // Handle real-time deep links
+///       final id = uri.queryParameters['id'];
+///       if (uri.path.contains('/challenge')) {
+///         GoRouter.of(context).push('/challenge/$id');
+///       }
 ///     },
 ///   ),
 /// );
 /// ```
 ///
-/// **Advanced Usage**:
+/// **Advanced Usage (Both Normal & Deferred Deep Links)**:
 /// ```dart
+/// // Initialize with both normal and deferred deep links
 /// await FlutterAwesomeDeeplink.initialize(
-///   config: DeferredLinkConfig(
+///   normalConfig: NormalDeepLinkConfig(
 ///     appScheme: 'myapp',
-///     validDomains: ['myapp.com', 'app.myapp.com'],
-///     validPaths: ['/app/', '/content/'],
-///     enableIOSClipboard: true, // User opted in
-///     maxLinkAge: Duration(days: 14),
-///     enableLogging: true, // For development
-///     onDeferredLink: (link) => MyRouter.handleDeepLink(link),
-///     onError: (error) => Analytics.trackError(error),
-///     onAttributionData: (data) => Analytics.trackAttribution(data),
+///     validDomains: ['myapp.com'],
+///     onNormalLink: (uri) {
+///       // Handle real-time deep links
+///       final id = uri.queryParameters['id'];
+///       GoRouter.of(context).push('/challenge/$id');
+///     },
+///   ),
+///   deferredConfig: DeferredLinkConfig(
+///     appScheme: 'myapp',
+///     validDomains: ['myapp.com'],
+///     enableIOSClipboard: true, // Optional: Enable iOS clipboard detection
+///     onDeferredLink: (link) {
+///       // Handle post-install attribution
+///       MyRouter.handleDeepLink(link);
+///     },
 ///   ),
 /// );
 /// ```
 
 // Export public API
+export 'src/models/normal_deep_link_config.dart';
 export 'src/models/deferred_link_config.dart';
 export 'src/services/deferred_deep_links_service.dart';
 export 'src/utils/link_validator.dart';
 
+import 'src/models/normal_deep_link_config.dart';
 import 'src/models/deferred_link_config.dart';
 import 'src/services/deferred_deep_links_service.dart';
 
@@ -61,28 +75,51 @@ class FlutterAwesomeDeeplink {
   /// Internal service instance
   static DeferredDeepLinksService? _service;
 
-  /// Initialize the deferred deep links plugin
+  /// Initialize the Flutter Awesome Deeplink plugin
   ///
   /// This should be called early in your app's lifecycle, typically in main()
   /// or during app initialization.
   ///
   /// **Parameters**:
-  /// - `config`: Configuration for deferred link attribution
+  /// - `normalConfig`: Configuration for normal deep links (required)
+  /// - `deferredConfig`: Configuration for deferred link attribution (optional)
   ///
-  /// **Example**:
+  /// **Example (Normal Deep Links Only)**:
   /// ```dart
   /// await FlutterAwesomeDeeplink.initialize(
-  ///   config: DeferredLinkConfig(
+  ///   normalConfig: NormalDeepLinkConfig(
   ///     appScheme: 'myapp',
   ///     validDomains: ['myapp.com'],
-  ///     onDeferredLink: (link) => handleDeepLink(link),
+  ///     onNormalLink: (uri) => handleDeepLink(uri),
+  ///   ),
+  /// );
+  /// ```
+  ///
+  /// **Example (Both Normal & Deferred Deep Links)**:
+  /// ```dart
+  /// await FlutterAwesomeDeeplink.initialize(
+  ///   normalConfig: NormalDeepLinkConfig(
+  ///     appScheme: 'myapp',
+  ///     validDomains: ['myapp.com'],
+  ///     onNormalLink: (uri) => handleDeepLink(uri),
+  ///   ),
+  ///   deferredConfig: DeferredLinkConfig(
+  ///     appScheme: 'myapp',
+  ///     validDomains: ['myapp.com'],
+  ///     onDeferredLink: (link) => handleDeferredLink(link),
   ///   ),
   /// );
   /// ```
   ///
   /// **Throws**: Exception if initialization fails
-  static Future<void> initialize({required DeferredLinkConfig config}) async {
-    _service = DeferredDeepLinksService(config);
+  static Future<void> initialize({
+    required NormalDeepLinkConfig normalConfig,
+    DeferredLinkConfig? deferredConfig,
+  }) async {
+    _service = DeferredDeepLinksService(
+      normalConfig: normalConfig,
+      deferredConfig: deferredConfig,
+    );
     await _service!.initialize();
   }
 
@@ -120,7 +157,7 @@ class FlutterAwesomeDeeplink {
   /// await FlutterAwesomeDeeplink.storeDeferredLink('myapp://content?id=123');
   /// ```
   static Future<void> storeDeferredLink(String deepLinkUrl) async {
-    await instance.storeDeferredDeepLink(deepLinkUrl);
+    await instance.storeDeferredLink(deepLinkUrl);
   }
 
   /// Get stored deferred deep link (for debugging)
@@ -196,5 +233,41 @@ class FlutterAwesomeDeeplink {
   /// Returns true if any links were cleaned up.
   static Future<bool> cleanupExpiredLinks() async {
     return await instance.cleanupExpiredLinks();
+  }
+
+  /// Clear the last processed link (useful for testing)
+  ///
+  /// Clears the duplicate prevention cache, allowing the same link
+  /// to be processed again. Useful for testing scenarios.
+  static void clearLastProcessedLink() {
+    instance.clearLastProcessedLink();
+  }
+
+  /// Get the last processed link identifier (useful for debugging)
+  ///
+  /// Returns the identifier of the last processed deep link.
+  /// Useful for debugging duplicate link prevention.
+  static String? get lastProcessedLink {
+    return instance.lastProcessedLink;
+  }
+
+  /// Dispose of the plugin resources
+  ///
+  /// Call this when you no longer need the plugin to clean up resources
+  /// and prevent memory leaks. Typically called in your app's dispose method.
+  ///
+  /// **Example**:
+  /// ```dart
+  /// @override
+  /// void dispose() {
+  ///   FlutterAwesomeDeeplink.dispose();
+  ///   super.dispose();
+  /// }
+  /// ```
+  static Future<void> dispose() async {
+    if (_service != null) {
+      await _service!.dispose();
+      _service = null;
+    }
   }
 }
