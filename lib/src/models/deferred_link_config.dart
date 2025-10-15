@@ -48,7 +48,7 @@ class DeferredLinkConfig {
   ///   GoRouter.of(context).push('/content?id=${extractId(link)}');
   /// }
   /// ```
-  final Function(String link)? onDeferredLink;
+  final Function(String link)? onDeepLink;
 
   /// Callback function called when an error occurs during attribution
   ///
@@ -118,7 +118,7 @@ class DeferredLinkConfig {
     this.enableIOSClipboard = false, // Privacy-first default
     this.maxLinkAge = const Duration(days: 7),
     this.storageKeyPrefix = 'flutter_awesome_deeplink_',
-    this.onDeferredLink,
+    this.onDeepLink,
     this.onError,
     this.onAttributionData,
     this.enableLogging = false,
@@ -146,7 +146,7 @@ class DeferredLinkConfig {
       enableIOSClipboard: enableIOSClipboard ?? this.enableIOSClipboard,
       maxLinkAge: maxLinkAge ?? this.maxLinkAge,
       storageKeyPrefix: storageKeyPrefix ?? this.storageKeyPrefix,
-      onDeferredLink: onDeferredLink ?? this.onDeferredLink,
+      onDeepLink: onDeferredLink ?? this.onDeepLink,
       onError: onError ?? this.onError,
       onAttributionData: onAttributionData ?? this.onAttributionData,
       enableLogging: enableLogging ?? this.enableLogging,

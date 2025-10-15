@@ -13,7 +13,7 @@ void main() async {
       enableIOSClipboard: true, // Enable for demo purposes
       maxLinkAge: Duration(days: 7),
       enableLogging: true, // Enable for demo
-      onDeferredLink: (link) {
+      onDeepLink: (link) {
         // Handle deferred link - this would typically navigate to content
         print('📱 Deferred link received: $link');
         // In a real app, you might do:

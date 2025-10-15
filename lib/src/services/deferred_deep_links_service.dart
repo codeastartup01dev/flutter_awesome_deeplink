@@ -298,8 +298,8 @@ class DeferredDeepLinksService {
       config.onAttributionData?.call(result.toMap());
 
       // Call the configured callback with the deferred link
-      if (config.onDeferredLink != null) {
-        config.onDeferredLink!(deferredLink);
+      if (config.onDeepLink != null) {
+        config.onDeepLink!(deferredLink);
         if (config.enableLogging) {
           print(
             'DeferredDeepLinksService: ✅ Successfully processed deferred link from $source',
