@@ -30,6 +30,25 @@ A comprehensive Flutter plugin that provides reliable deferred deep link attribu
 | **iOS** | Clipboard Detection | **90%+** | Storage Service | **95%+** 🚀 |
 | **Overall** | Platform-Optimized | **92%+** | Multiple Fallbacks | **96%+** 🎯 |
 
+## 🌐 Real-World URL Examples (Challenge App)
+
+The plugin supports multiple URL formats for maximum compatibility:
+
+### Production URLs
+- **Custom Domain**: `https://mychallengeapp.com/app/challenge?id=123`
+- **Firebase Hosting**: `https://challenge-app-startup.web.app/app/challenge?id=123`
+- **Custom Scheme**: `challengeapp://challenge?id=123`
+
+### Development URLs  
+- **Firebase Dev**: `https://challenge-app-startup.web.app/dev/app/challenge?id=123`
+- **Custom Scheme**: `challengeapp://challenge?id=123`
+
+### Supported Content Types
+- **Challenges**: `/challenge?id=challenge_123`
+- **Events**: `/event?id=event_456` 
+- **User Profiles**: `/profile?id=user_789`
+- **Custom Pages**: `/custom?page=about&section=team`
+
 ## 🚀 Quick Start
 
 ### 1. Installation
@@ -52,8 +71,8 @@ void main() async {
   // Initialize with minimal configuration
   await FlutterAwesomeDeeplink.initialize(
     config: DeferredLinkConfig(
-      appScheme: 'myapp',
-      validDomains: ['myapp.com'],
+      appScheme: 'challengeapp',
+      validDomains: ['challenge-app-startup.web.app'],
       onDeepLink: (link) {
         // Handle both normal and deferred deep links uniformly
         print('Deep link received: $link');
@@ -67,70 +86,82 @@ void main() async {
 }
 ```
 
-### 3. Advanced Configuration
+### 3. Advanced Configuration (Real Production Example)
 
 ```dart
+// Real-world configuration from Challenge App
 await FlutterAwesomeDeeplink.initialize(
   config: DeferredLinkConfig(
-    appScheme: 'myapp',
-    validDomains: ['myapp.com', 'app.myapp.com'],
-    validPaths: ['/app/', '/content/'],
+    appScheme: 'challengeapp',
+    validDomains: [
+      'challenge-app-startup.web.app',  // Firebase hosting domain
+      'mychallengeapp.com',             // Custom production domain
+    ],
+    validPaths: ['/app/', '/dev/app/', '/challenge', '/event'],
     enableDeferredLinkForAndroid: true, // Android Install Referrer (default: true)
     enableDeferredLinkForIOS: true, // iOS clipboard detection (user opted in)
     maxLinkAge: Duration(days: 14),
     enableLogging: true, // For development
+    externalLogger: logger, // 🎯 Unified logging with flutter_awesome_logger
     onDeepLink: (link) {
       // Handle both normal and deferred deep links uniformly
       final id = FlutterAwesomeDeeplink.extractLinkId(link);
-      MyRouter.navigateToContent(id);
+      AutoNavigation.handleDeferredLink(link); // Custom navigation handler
     },
     onError: (error) {
-      // Handle errors
+      // Handle errors with proper logging
+      logger.e('Deferred deep link error: $error');
       Analytics.trackError('deferred_link_error', error);
     },
     onAttributionData: (data) {
-      // Track attribution success
+      // Track attribution success with detailed metadata
+      logger.i('Attribution data: $data');
       Analytics.trackAttribution(data);
     },
   ),
 );
 ```
 
-### 4. Logger Integration
+### 4. Logger Integration (Production Example)
 
-The plugin integrates seamlessly with `flutter_awesome_logger` and other logging systems:
+The plugin integrates seamlessly with `flutter_awesome_logger` and other logging systems. Here's how it's implemented in the Challenge App:
 
 ```dart
 import 'package:flutter_awesome_logger/flutter_awesome_logger.dart';
 import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  
-  // Get your app's logger instance
-  final logger = FlutterAwesomeLogger.loggingUsingLogger;
-  
-  await FlutterAwesomeDeeplink.initialize(
-    config: DeferredLinkConfig(
-      appScheme: 'myapp',
-      validDomains: ['myapp.com'],
-      enableLogging: true,
-      externalLogger: logger, // 🎯 Unified logging with your app
-      onDeepLink: (link) {
-        // Handle both normal and deferred deep links
-        logger.i('Deep link received: $link');
-        MyRouter.handleDeepLink(link);
-      },
-      onError: (error) {
-        logger.e('Deep link error: $error');
-      },
-      onAttributionData: (data) {
-        logger.i('Attribution data: $data');
-      },
-    ),
-  );
-  
-  runApp(MyApp());
+class MyBottomNavBar extends StatefulWidget {
+  // ... widget implementation
+
+  /// Initialize flutter_awesome_deeplink plugin with unified logging
+  /// Replaces the previous DeepLinkUsingAppLinksService implementation
+  Future<void> _initializeDeepLinkPlugin() async {
+    try {
+      logger.i('MyBottomNavBar: Initializing flutter_awesome_deeplink plugin');
+
+      // Initialize the plugin with both normal and deferred deep link support
+      await FlutterAwesomeDeeplink.initialize(
+        config: DeferredLinkConfig(
+          appScheme: 'challengeapp',
+          validDomains: ['challenge-app-startup.web.app', 'mychallengeapp.com'],
+          validPaths: ['/app/', '/dev/app/', '/challenge', '/event'],
+          enableLogging: true,
+          externalLogger: logger, // 🎯 Pass the unified logger instance
+          onAttributionData: (data) {
+            logger.i('MyBottomNavBar: Attribution data: $data');
+          },
+          onDeepLink: AutoNavigation.handleDeferredLink,
+          onError: (error) {
+            logger.e('MyBottomNavBar: Deferred deep link error: $error');
+          },
+        ),
+      );
+
+      logger.i('MyBottomNavBar: ✅ flutter_awesome_deeplink plugin initialized successfully');
+    } catch (e) {
+      logger.e('MyBottomNavBar: Error initializing deep link plugin', error: e);
+    }
+  }
 }
 ```
 
@@ -146,53 +177,115 @@ void main() async {
 
 The plugin automatically handles Android setup, but you need to configure your app for deep links:
 
-#### 1. AndroidManifest.xml
+#### 1. AndroidManifest.xml (Real Production Configuration)
 
-Add intent filters to your `android/app/src/main/AndroidManifest.xml`:
+Add intent filters to your `android/app/src/main/AndroidManifest.xml`. Here's the exact configuration from Challenge App:
 
 ```xml
 <activity
     android:name=".MainActivity"
     android:exported="true"
     android:launchMode="singleTop"
-    android:theme="@style/LaunchTheme">
+    android:taskAffinity=""
+    android:theme="@style/LaunchTheme"
+    android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+    android:hardwareAccelerated="true"
+    android:enableOnBackInvokedCallback="true"
+    android:windowSoftInputMode="adjustResize">
     
-    <!-- Your existing configuration -->
+    <!-- IMPORTANT: Disable Flutter's built-in deep linking when using app_links -->
+    <meta-data
+        android:name="flutter_deeplinking_enabled"
+        android:value="false" />
     
-    <!-- Deep link intent filter -->
+    <!-- Production App Links Intent Filter -->
     <intent-filter android:autoVerify="true">
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="https"
-              android:host="myapp.com"
-              android:pathPrefix="/app" />
+        <data
+            android:scheme="https"
+            android:host="mychallengeapp.com"
+            android:pathPrefix="/app" />
+    </intent-filter>
+
+    <!-- Firebase Hosting Domain (Production) -->
+    <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="https"
+            android:host="challenge-app-startup.web.app"
+            android:pathPrefix="/app" />
     </intent-filter>
     
-    <!-- Custom scheme intent filter -->
+    <!-- Firebase Hosting Domain (Development) -->
+    <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="https"
+            android:host="challenge-app-startup.web.app"
+            android:pathPrefix="/dev/app" />
+    </intent-filter>
+    
+    <!-- Custom scheme for direct app links -->
     <intent-filter>
         <action android:name="android.intent.action.VIEW" />
         <category android:name="android.intent.category.DEFAULT" />
         <category android:name="android.intent.category.BROWSABLE" />
-        <data android:scheme="myapp" />
+        <data android:scheme="challengeapp" />
     </intent-filter>
 </activity>
 ```
 
-#### 2. Domain Verification
+#### 2. Domain Verification (assetlinks.json)
 
-Create `android/app/src/main/res/values/strings.xml` if it doesn't exist:
+For App Links verification, create `.well-known/assetlinks.json` on your web domain. Here's the Challenge App configuration:
 
-```xml
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">My App</string>
-</resources>
+```json
+[
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.challenge.startup",
+            "sha256_cert_fingerprints": [
+                "COPY_PASTE_SHA256_FINGERPRINT_FROM_YOUR_PLAY_CONSOLE_FOR_PROD_FLAVOR_APP"
+            ],
+            "paths": [
+                "/app/*"
+            ]
+        }
+    },
+    {
+        "relation": [
+            "delegate_permission/common.handle_all_urls"
+        ],
+        "target": {
+            "namespace": "android_app",
+            "package_name": "com.challenge.startup.dev",
+            "sha256_cert_fingerprints": [
+                "COPY_PASTE_SHA256_FINGERPRINT_FROM_YOUR_PLAY_CONSOLE_FOR_DEV_FLAVOR_APP"
+            ],
+            "paths": [
+                "/dev/app/*"
+            ]
+        }
+    }
+]
 ```
+
+**Host this file at:**
+- Production Firebase Hosting: `https://challenge-app-startup.web.app/.well-known/assetlinks.json`
 
 ### iOS Setup
 
-#### 1. URL Schemes
+#### 1. URL Schemes (Challenge App Configuration)
 
 Add URL schemes to your `ios/Runner/Info.plist`:
 
@@ -201,16 +294,24 @@ Add URL schemes to your `ios/Runner/Info.plist`:
 <array>
     <dict>
         <key>CFBundleURLName</key>
-        <string>myapp.deeplink</string>
+        <string>challengeapp.deeplink</string>
         <key>CFBundleURLSchemes</key>
         <array>
-            <string>myapp</string>
+            <string>challengeapp</string>
+        </array>
+    </dict>
+    <dict>
+        <key>CFBundleURLName</key>
+        <string>challengeapp.https</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+            <string>https</string>
         </array>
     </dict>
 </array>
 ```
 
-#### 2. Universal Links (Optional)
+#### 2. Universal Links (Challenge App Configuration)
 
 For Universal Links, add associated domains to your `ios/Runner/Runner.entitlements`:
 
@@ -221,11 +322,33 @@ For Universal Links, add associated domains to your `ios/Runner/Runner.entitleme
 <dict>
     <key>com.apple.developer.associated-domains</key>
     <array>
-        <string>applinks:myapp.com</string>
+        <string>applinks:mychallengeapp.com</string>
+        <string>applinks:challenge-app-startup.web.app</string>
     </array>
 </dict>
 </plist>
 ```
+
+#### 3. Apple App Site Association
+
+Create `apple-app-site-association` file (no extension) on your web domain:
+
+```json
+{
+    "applinks": {
+        "apps": [],
+        "details": [
+            {
+                "appID": "TEAM_ID.com.challenge.startup",
+                "paths": ["/app/*", "/dev/app/*"]
+            }
+        ]
+    }
+}
+```
+
+**Host this file at:**
+- Production Firebase Hosting: `https://challenge-app-startup.web.app/.well-known/apple-app-site-association`
 
 ## 🔧 Configuration Options
 
@@ -334,12 +457,27 @@ await FlutterAwesomeDeeplink.resetFirstLaunchFlag();
 
 ### Platform-Specific Testing
 
-#### Android Testing
+#### Android Testing (Challenge App Examples)
 ```bash
-# Test with ADB
+# Test Production Domain
 adb shell am start -W -a android.intent.action.VIEW \
-  -d "https://myapp.com/app/content?id=test123" \
-  com.example.myapp
+  -d "https://mychallengeapp.com/app/challenge?id=test123" \
+  com.challenge.startup
+
+# Test Firebase Domain (Production)
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "https://challenge-app-startup.web.app/app/challenge?id=test123" \
+  com.challenge.startup
+
+# Test Firebase Domain (Development)
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "https://challenge-app-startup.web.app/dev/app/challenge?id=test123" \
+  com.challenge.startup.dev
+
+# Test Custom Scheme
+adb shell am start -W -a android.intent.action.VIEW \
+  -d "challengeapp://challenge?id=test123" \
+  com.challenge.startup
 ```
 
 #### iOS Testing

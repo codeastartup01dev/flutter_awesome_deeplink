@@ -1,6 +1,6 @@
 name: flutter_awesome_deeplink
 description: "Platform-optimized deferred deep links for Flutter with 96%+ attribution success rates. Unified normal and deferred deep link handling with Android Install Referrer API and optional iOS clipboard detection. Privacy-first design with flutter_awesome_logger integration."
-version: 0.0.1
+version: 0.0.2
 homepage: https://github.com/codeastartup01dev/flutter_awesome_deeplink
 repository: https://github.com/codeastartup01dev/flutter_awesome_deeplink
 issue_tracker: https://github.com/codeastartup01dev/flutter_awesome_deeplink/issues
