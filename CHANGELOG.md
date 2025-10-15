@@ -5,12 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.0.1] - 2024-01-15
+## [0.0.1] - 2025-01-15
 
 ### Added
 - 🚀 **Initial release** of Flutter Awesome Deeplink plugin
 - 🤖 **Android Install Referrer API** integration for 95%+ attribution success
 - 🍎 **iOS clipboard detection** with privacy-first opt-in configuration
+- 🔗 **Normal deep links** handling using app_links for real-time navigation
+- 🔄 **Unified deep link handling** - single callback for both normal and deferred links
+- 📝 **Logger integration** with flutter_awesome_logger and custom loggers
 - 🔒 **Privacy-conscious design** with iOS clipboard checking disabled by default
 - 🌐 **Cross-platform storage service** for deferred link persistence
 - ⚡ **Platform-optimized attribution strategies** for maximum success rates
@@ -23,23 +26,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Features
 - **Platform Support**: Android, iOS, and Web
+- **Deep Link Types**: 
+  - Normal deep links: Real-time navigation using app_links
+  - Deferred deep links: Post-install attribution with platform-optimized strategies
 - **Attribution Methods**: 
   - Android: Install Referrer API → Storage Service fallback
   - iOS: Clipboard detection → Storage Service fallback
   - Cross-platform: Persistent storage with automatic cleanup
 - **Success Rates**: 96%+ overall attribution success
 - **Privacy Compliance**: GDPR-friendly with minimal data collection
+- **Logger Integration**: Seamless integration with flutter_awesome_logger
 - **Configuration Options**: Highly customizable with sensible defaults
 - **Developer Experience**: Simple setup with extensive debugging tools
+- **Unified Navigation**: Single callback handles both normal and deferred deep links
 
 ### Technical Details
-- **Minimum SDK**: Flutter 3.3.0+, Dart 3.8.1+
+- **Minimum SDK**: Flutter 3.3.0+, Dart 3.0.0+
 - **Android**: API 21+ with Install Referrer API 2.2
 - **iOS**: iOS 11+ with clipboard detection
 - **Dependencies**: 
-  - `shared_preferences: ^2.2.2`
-  - `universal_html: ^2.2.4`
-  - `plugin_platform_interface: ^2.0.2`
+  - `shared_preferences: ^2.2.2` - Cross-platform storage
+  - `universal_html: ^2.2.4` - Web platform support
+  - `plugin_platform_interface: ^2.0.2` - Plugin architecture
+  - `app_links: ^6.3.2` - Normal deep link handling
 
 ### Documentation
 - Complete API documentation with examples
@@ -97,9 +106,9 @@ Replace complex custom implementations with a production-ready, well-tested solu
 
 For questions, issues, or feature requests:
 - 📚 [Documentation](https://pub.dev/packages/flutter_awesome_deeplink)
-- 🐛 [Report Issues](https://github.com/yourusername/flutter_awesome_deeplink/issues)
-- 💬 [Discussions](https://github.com/yourusername/flutter_awesome_deeplink/discussions)
-- 📧 [Email Support](mailto:support@example.com)
+- 🐛 [Report Issues](https://github.com/codeastartup01dev/flutter_awesome_deeplink/issues)
+- 💬 [Discussions](https://github.com/codeastartup01dev/flutter_awesome_deeplink/discussions)
+- 📧 [Email Support](mailto:support@codeastartup01dev.com)
 
 ---
 

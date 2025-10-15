@@ -12,12 +12,15 @@ A comprehensive Flutter plugin that provides reliable deferred deep link attribu
 
 - **🤖 Android**: Install Referrer API (95%+ success rate)
 - **🍎 iOS**: Optional clipboard detection (90%+ success rate when enabled)
+- **🔗 Normal Deep Links**: Real-time deep link handling using app_links
 - **🔒 Privacy-first**: iOS clipboard checking is opt-in
 - **🌐 Cross-platform**: Works on Android, iOS, and Web
 - **⚡ High performance**: Minimal overhead and fast attribution
 - **🛡️ Production-ready**: Comprehensive error handling and logging
 - **📊 Analytics-ready**: Rich attribution metadata for optimization
 - **🎯 Self-hosted**: No vendor lock-in, full control over your data
+- **🔄 Unified Navigation**: Single callback handles both normal and deferred deep links
+- **📝 Logger Integration**: Works with flutter_awesome_logger and custom loggers
 
 ## 📊 Success Rates
 
@@ -52,9 +55,10 @@ void main() async {
       appScheme: 'myapp',
       validDomains: ['myapp.com'],
       onDeepLink: (link) {
-        // Handle the deferred link
-        print('Deferred link received: $link');
+        // Handle both normal and deferred deep links uniformly
+        print('Deep link received: $link');
         // Navigate to content based on the link
+        // MyRouter.handleDeepLink(link);
       },
     ),
   );
@@ -71,11 +75,12 @@ await FlutterAwesomeDeeplink.initialize(
     appScheme: 'myapp',
     validDomains: ['myapp.com', 'app.myapp.com'],
     validPaths: ['/app/', '/content/'],
-    enableDeferredLinkForIOS: true, // User opted in
+    enableDeferredLinkForAndroid: true, // Android Install Referrer (default: true)
+    enableDeferredLinkForIOS: true, // iOS clipboard detection (user opted in)
     maxLinkAge: Duration(days: 14),
     enableLogging: true, // For development
     onDeepLink: (link) {
-      // Handle deferred link
+      // Handle both normal and deferred deep links uniformly
       final id = FlutterAwesomeDeeplink.extractLinkId(link);
       MyRouter.navigateToContent(id);
     },
@@ -90,6 +95,50 @@ await FlutterAwesomeDeeplink.initialize(
   ),
 );
 ```
+
+### 4. Logger Integration
+
+The plugin integrates seamlessly with `flutter_awesome_logger` and other logging systems:
+
+```dart
+import 'package:flutter_awesome_logger/flutter_awesome_logger.dart';
+import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Get your app's logger instance
+  final logger = FlutterAwesomeLogger.loggingUsingLogger;
+  
+  await FlutterAwesomeDeeplink.initialize(
+    config: DeferredLinkConfig(
+      appScheme: 'myapp',
+      validDomains: ['myapp.com'],
+      enableLogging: true,
+      externalLogger: logger, // 🎯 Unified logging with your app
+      onDeepLink: (link) {
+        // Handle both normal and deferred deep links
+        logger.i('Deep link received: $link');
+        MyRouter.handleDeepLink(link);
+      },
+      onError: (error) {
+        logger.e('Deep link error: $error');
+      },
+      onAttributionData: (data) {
+        logger.i('Attribution data: $data');
+      },
+    ),
+  );
+  
+  runApp(MyApp());
+}
+```
+
+**Benefits of Logger Integration**:
+- 🔄 **Unified Logging**: All plugin logs use your app's logger
+- 📊 **Consistent Format**: Matches your app's log format and structure
+- 🎯 **Centralized Control**: Control plugin logging through your logger settings
+- 📝 **Rich Context**: Includes class names, methods, and structured data
 
 ## 📱 Platform-Specific Setup
 
@@ -187,13 +236,15 @@ DeferredLinkConfig({
   required String appScheme,              // Your app's custom scheme
   required List<String> validDomains,     // Valid web domains
   List<String> validPaths = const ['/'],  // Valid URL paths
-  bool enableDeferredLinkForIOS = false,        // iOS clipboard detection
+  bool enableDeferredLinkForAndroid = true,  // Android Install Referrer API
+  bool enableDeferredLinkForIOS = false,     // iOS clipboard detection (privacy-first)
   Duration maxLinkAge = const Duration(days: 7),  // Link expiration
   String storageKeyPrefix = 'flutter_awesome_deeplink_',  // Storage prefix
-  Function(String)? onDeepLink,       // Deferred link callback
+  Function(String)? onDeepLink,       // Unified deep link callback
   Function(String)? onError,              // Error callback
   Function(Map<String, dynamic>)? onAttributionData,  // Attribution callback
   bool enableLogging = false,             // Debug logging
+  dynamic externalLogger,                 // External logger instance
   Duration attributionTimeout = const Duration(seconds: 10),  // Timeout
 })
 ```
@@ -205,8 +256,9 @@ The plugin is privacy-first by default:
 ```dart
 DeferredLinkConfig(
   // ... other config
-  enableDeferredLinkForIOS: false,  // Default: disabled for privacy
-  // Only enable if user has explicitly opted in
+  enableDeferredLinkForAndroid: true,  // Default: enabled (Install Referrer API)
+  enableDeferredLinkForIOS: false,     // Default: disabled for privacy
+  // Only enable iOS clipboard detection if user has explicitly opted in
 )
 ```
 
@@ -505,8 +557,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Support
 
 - **Documentation**: [pub.dev/packages/flutter_awesome_deeplink](https://pub.dev/packages/flutter_awesome_deeplink)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/flutter_awesome_deeplink/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/flutter_awesome_deeplink/discussions)
+- **Issues**: [GitHub Issues](https://github.com/codeastartup01dev/flutter_awesome_deeplink/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/codeastartup01dev/flutter_awesome_deeplink/discussions)
 
 ---
 
