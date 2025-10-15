@@ -1,4 +1,4 @@
-package com.example.flutter_awesome_deeplink
+package com.codeastartup01dev.flutter_awesome_deeplink
 
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel

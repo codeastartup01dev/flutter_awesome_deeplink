@@ -1,4 +1,4 @@
-package com.example.flutter_awesome_deeplink
+package com.codeastartup01dev.flutter_awesome_deeplink
 
 import androidx.annotation.NonNull
 import android.content.Context
