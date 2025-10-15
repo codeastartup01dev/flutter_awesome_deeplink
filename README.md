@@ -51,7 +51,7 @@ void main() async {
     config: DeferredLinkConfig(
       appScheme: 'myapp',
       validDomains: ['myapp.com'],
-      onDeferredLink: (link) {
+      onDeepLink: (link) {
         // Handle the deferred link
         print('Deferred link received: $link');
         // Navigate to content based on the link
@@ -71,10 +71,10 @@ await FlutterAwesomeDeeplink.initialize(
     appScheme: 'myapp',
     validDomains: ['myapp.com', 'app.myapp.com'],
     validPaths: ['/app/', '/content/'],
-    enableIOSClipboard: true, // User opted in
+    enableDeferredLinkForIOS: true, // User opted in
     maxLinkAge: Duration(days: 14),
     enableLogging: true, // For development
-    onDeferredLink: (link) {
+    onDeepLink: (link) {
       // Handle deferred link
       final id = FlutterAwesomeDeeplink.extractLinkId(link);
       MyRouter.navigateToContent(id);
@@ -187,10 +187,10 @@ DeferredLinkConfig({
   required String appScheme,              // Your app's custom scheme
   required List<String> validDomains,     // Valid web domains
   List<String> validPaths = const ['/'],  // Valid URL paths
-  bool enableIOSClipboard = false,        // iOS clipboard detection
+  bool enableDeferredLinkForIOS = false,        // iOS clipboard detection
   Duration maxLinkAge = const Duration(days: 7),  // Link expiration
   String storageKeyPrefix = 'flutter_awesome_deeplink_',  // Storage prefix
-  Function(String)? onDeferredLink,       // Deferred link callback
+  Function(String)? onDeepLink,       // Deferred link callback
   Function(String)? onError,              // Error callback
   Function(Map<String, dynamic>)? onAttributionData,  // Attribution callback
   bool enableLogging = false,             // Debug logging
@@ -205,7 +205,7 @@ The plugin is privacy-first by default:
 ```dart
 DeferredLinkConfig(
   // ... other config
-  enableIOSClipboard: false,  // Default: disabled for privacy
+  enableDeferredLinkForIOS: false,  // Default: disabled for privacy
   // Only enable if user has explicitly opted in
 )
 ```
@@ -372,7 +372,7 @@ await FlutterAwesomeDeeplink.initialize(
   config: DeferredLinkConfig(
     appScheme: 'myapp',
     validDomains: ['myapp.page.link'],  // Your Firebase domain
-    onDeferredLink: (link) => handleDeepLink(link),
+    onDeepLink: (link) => handleDeepLink(link),
   ),
 );
 ```
@@ -392,7 +392,7 @@ await FlutterAwesomeDeeplink.initialize(
   config: DeferredLinkConfig(
     appScheme: 'myapp',
     validDomains: ['myapp.app.link'],  // Your Branch domain
-    onDeferredLink: (link) => handleDeepLink(link),
+    onDeepLink: (link) => handleDeepLink(link),
     onAttributionData: (data) {
       // Rich attribution data similar to Branch
       Analytics.track('attribution', data);
@@ -418,7 +418,7 @@ await FlutterAwesomeDeeplink.initialize(config: config);
 ```dart
 // Replace direct service calls with plugin callbacks
 DeferredLinkConfig(
-  onDeferredLink: (link) {
+  onDeepLink: (link) {
     // Your existing link handling logic
     MyRouter.handleDeepLink(link);
   },

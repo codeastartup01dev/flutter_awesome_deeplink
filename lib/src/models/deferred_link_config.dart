@@ -17,14 +17,18 @@ class DeferredLinkConfig {
   /// Example: ['/app/', '/content/', '/challenge/']
   final List<String> validPaths;
 
-  /// Enable iOS clipboard checking for deferred link attribution
+  /// Enable deferred deep links for Android using Install Referrer API
   ///
-  /// **Privacy Note**: When enabled, the plugin will check the clipboard
-  /// on first app launch to detect copied deep links. This provides 90%+
-  /// attribution success on iOS but requires clipboard access.
+  /// **Default**: true (95%+ success rate on Android)
+  /// **Disable**: Set to false if you only need normal deep links on Android
+  final bool enableDeferredLinkForAndroid;
+
+  /// Enable deferred deep links for iOS using clipboard detection
   ///
   /// **Default**: false (privacy-first approach)
-  final bool enableIOSClipboard;
+  /// **Enable**: Set to true for iOS post-install attribution (90%+ success when enabled)
+  /// **Privacy**: Only checks clipboard on first app launch
+  final bool enableDeferredLinkForIOS;
 
   /// Maximum age for deferred links before they expire
   /// Links older than this duration will be automatically cleaned up
@@ -38,11 +42,18 @@ class DeferredLinkConfig {
   /// **Default**: 'flutter_awesome_deeplink_'
   final String storageKeyPrefix;
 
-  /// Callback function called when a deferred link is found and validated
+  /// Unified callback for both normal and deferred deep links
   ///
-  /// This is where you handle the deep link navigation in your app:
+  /// This simplifies navigation by handling both scenarios with the same callback.
+  /// Whether the link comes from real-time navigation or post-install attribution,
+  /// you navigate to the same destination.
+  ///
+  /// **Usage**:
   /// ```dart
-  /// onDeferredLink: (link) {
+  /// onDeepLink: (link) {
+  ///   // Handle both normal and deferred deep links uniformly
+  ///   AutoNavigation.handleDeepLink(link);
+  ///   // or
   ///   MyRouter.handleDeepLink(link);
   ///   // or
   ///   GoRouter.of(context).push('/content?id=${extractId(link)}');
@@ -92,7 +103,7 @@ class DeferredLinkConfig {
   /// DeferredLinkConfig(
   ///   appScheme: 'myapp',
   ///   validDomains: ['myapp.com'],
-  ///   onDeferredLink: (link) => handleDeepLink(link),
+  ///   onDeepLink: (link) => handleDeepLink(link),
   /// )
   /// ```
   ///
@@ -102,11 +113,12 @@ class DeferredLinkConfig {
   ///   appScheme: 'myapp',
   ///   validDomains: ['myapp.com', 'app.myapp.com'],
   ///   validPaths: ['/app/', '/content/'],
-  ///   enableIOSClipboard: true, // User opted in
+  ///   enableDeferredLinkForAndroid: true, // Android Install Referrer
+  ///   enableDeferredLinkForIOS: true, // iOS clipboard detection (user opted in)
   ///   maxLinkAge: Duration(days: 14),
   ///   storageKeyPrefix: 'myapp_deferred_',
   ///   enableLogging: true, // For development
-  ///   onDeferredLink: (link) => MyRouter.handleDeepLink(link),
+  ///   onDeepLink: (link) => MyRouter.handleDeepLink(link),
   ///   onError: (error) => Analytics.trackError(error),
   ///   onAttributionData: (data) => Analytics.trackAttribution(data),
   /// )
@@ -115,7 +127,8 @@ class DeferredLinkConfig {
     required this.appScheme,
     required this.validDomains,
     this.validPaths = const ['/'],
-    this.enableIOSClipboard = false, // Privacy-first default
+    this.enableDeferredLinkForAndroid = true, // Default enabled for Android
+    this.enableDeferredLinkForIOS = false, // Privacy-first default for iOS
     this.maxLinkAge = const Duration(days: 7),
     this.storageKeyPrefix = 'flutter_awesome_deeplink_',
     this.onDeepLink,
@@ -130,10 +143,11 @@ class DeferredLinkConfig {
     String? appScheme,
     List<String>? validDomains,
     List<String>? validPaths,
-    bool? enableIOSClipboard,
+    bool? enableDeferredLinkForAndroid,
+    bool? enableDeferredLinkForIOS,
     Duration? maxLinkAge,
     String? storageKeyPrefix,
-    Function(String)? onDeferredLink,
+    Function(String)? onDeepLink,
     Function(String)? onError,
     Function(Map<String, dynamic>)? onAttributionData,
     bool? enableLogging,
@@ -143,10 +157,13 @@ class DeferredLinkConfig {
       appScheme: appScheme ?? this.appScheme,
       validDomains: validDomains ?? this.validDomains,
       validPaths: validPaths ?? this.validPaths,
-      enableIOSClipboard: enableIOSClipboard ?? this.enableIOSClipboard,
+      enableDeferredLinkForAndroid:
+          enableDeferredLinkForAndroid ?? this.enableDeferredLinkForAndroid,
+      enableDeferredLinkForIOS:
+          enableDeferredLinkForIOS ?? this.enableDeferredLinkForIOS,
       maxLinkAge: maxLinkAge ?? this.maxLinkAge,
       storageKeyPrefix: storageKeyPrefix ?? this.storageKeyPrefix,
-      onDeepLink: onDeferredLink ?? this.onDeepLink,
+      onDeepLink: onDeepLink ?? this.onDeepLink,
       onError: onError ?? this.onError,
       onAttributionData: onAttributionData ?? this.onAttributionData,
       enableLogging: enableLogging ?? this.enableLogging,
@@ -160,7 +177,8 @@ class DeferredLinkConfig {
       'appScheme': appScheme,
       'validDomains': validDomains,
       'validPaths': validPaths,
-      'enableIOSClipboard': enableIOSClipboard,
+      'enableDeferredLinkForAndroid': enableDeferredLinkForAndroid,
+      'enableDeferredLinkForIOS': enableDeferredLinkForIOS,
       'maxLinkAgeHours': maxLinkAge.inHours,
       'storageKeyPrefix': storageKeyPrefix,
       'enableLogging': enableLogging,
@@ -174,7 +192,8 @@ class DeferredLinkConfig {
         'appScheme: $appScheme, '
         'validDomains: $validDomains, '
         'validPaths: $validPaths, '
-        'enableIOSClipboard: $enableIOSClipboard, '
+        'enableDeferredLinkForAndroid: $enableDeferredLinkForAndroid, '
+        'enableDeferredLinkForIOS: $enableDeferredLinkForIOS, '
         'maxLinkAge: $maxLinkAge, '
         'enableLogging: $enableLogging'
         ')';

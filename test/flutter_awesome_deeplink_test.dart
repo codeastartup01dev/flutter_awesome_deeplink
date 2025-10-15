@@ -133,7 +133,7 @@ void main() {
       expect(config.appScheme, 'testapp');
       expect(config.validDomains, ['test.com']);
       expect(config.validPaths, ['/']);
-      expect(config.enableIOSClipboard, false); // Default should be false
+      expect(config.enableDeferredLinkForIOS, false); // Default should be false
       expect(config.maxLinkAge, const Duration(days: 7));
       expect(config.enableLogging, false);
     });
@@ -143,7 +143,7 @@ void main() {
         appScheme: 'testapp',
         validDomains: ['test.com', 'app.test.com'],
         validPaths: ['/app/', '/content/'],
-        enableIOSClipboard: true,
+        enableDeferredLinkForIOS: true,
         maxLinkAge: const Duration(days: 14),
         enableLogging: true,
         storageKeyPrefix: 'custom_prefix_',
@@ -152,7 +152,7 @@ void main() {
       expect(config.appScheme, 'testapp');
       expect(config.validDomains, ['test.com', 'app.test.com']);
       expect(config.validPaths, ['/app/', '/content/']);
-      expect(config.enableIOSClipboard, true);
+      expect(config.enableDeferredLinkForIOS, true);
       expect(config.maxLinkAge, const Duration(days: 14));
       expect(config.enableLogging, true);
       expect(config.storageKeyPrefix, 'custom_prefix_');
@@ -165,13 +165,13 @@ void main() {
       );
 
       final updated = original.copyWith(
-        enableIOSClipboard: true,
+        enableDeferredLinkForIOS: true,
         enableLogging: true,
       );
 
       expect(updated.appScheme, 'testapp'); // Unchanged
       expect(updated.validDomains, ['test.com']); // Unchanged
-      expect(updated.enableIOSClipboard, true); // Changed
+      expect(updated.enableDeferredLinkForIOS, true); // Changed
       expect(updated.enableLogging, true); // Changed
     });
   });

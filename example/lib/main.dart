@@ -10,7 +10,7 @@ void main() async {
       appScheme: 'awesomedeeplink',
       validDomains: ['example.com', 'myapp.example.com'],
       validPaths: ['/app/', '/content/'],
-      enableIOSClipboard: true, // Enable for demo purposes
+      enableDeferredLinkForIOS: true, // Enable for demo purposes
       maxLinkAge: Duration(days: 7),
       enableLogging: true, // Enable for demo
       onDeepLink: (link) {

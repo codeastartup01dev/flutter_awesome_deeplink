@@ -1,43 +1,51 @@
+library flutter_awesome_deeplink;
+
 /// Flutter Awesome Deeplink Plugin
 ///
-/// Platform-optimized deferred deep links for Flutter with 96%+ attribution success rates.
+/// Platform-optimized deferred deep links AND normal deep links for Flutter with 96%+ attribution success rates.
 ///
 /// **Key Features**:
-/// - 🤖 **Android**: Install Referrer API (95%+ success rate)
-/// - 🍎 **iOS**: Optional clipboard detection (90%+ success rate when enabled)
-/// - 🔒 **Privacy-first**: iOS clipboard checking is opt-in
+/// - 🤖 **Android**: Install Referrer API (95%+ success rate) - configurable
+/// - 🍎 **iOS**: Optional clipboard detection (90%+ success rate when enabled) - configurable
+/// - 🔗 **Normal Deep Links**: Real-time deep link handling using app_links
+/// - 🔒 **Privacy-first**: iOS clipboard checking is opt-in (disabled by default)
 /// - 🌐 **Cross-platform**: Works on Android, iOS, and Web
 /// - ⚡ **High performance**: Minimal overhead and fast attribution
 /// - 🛡️ **Production-ready**: Comprehensive error handling and logging
+/// - 🎯 **Unified Navigation**: Single callback handles both normal and deferred deep links
 ///
 /// **Basic Usage**:
 /// ```dart
 /// import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
 ///
-/// // Initialize with minimal configuration
+/// // Initialize with unified deep link handling
 /// await FlutterAwesomeDeeplink.initialize(
 ///   config: DeferredLinkConfig(
 ///     appScheme: 'myapp',
 ///     validDomains: ['myapp.com'],
-///     onDeferredLink: (link) {
-///       // Handle the deferred link
-///       MyRouter.handleDeepLink(link);
+///     onDeepLink: (link) {
+///       // Handle both normal and deferred deep links uniformly
+///       AutoNavigation.handleDeepLink(link);
 ///     },
 ///   ),
 /// );
 /// ```
 ///
-/// **Advanced Usage**:
+/// **Advanced Usage with Platform Control**:
 /// ```dart
 /// await FlutterAwesomeDeeplink.initialize(
 ///   config: DeferredLinkConfig(
 ///     appScheme: 'myapp',
 ///     validDomains: ['myapp.com', 'app.myapp.com'],
 ///     validPaths: ['/app/', '/content/'],
-///     enableIOSClipboard: true, // User opted in
-///     maxLinkAge: Duration(days: 14),
+///     enableDeferredLinkForAndroid: true, // Android Install Referrer (default: true)
+///     enableDeferredLinkForIOS: true, // iOS clipboard detection (default: false)
 ///     enableLogging: true, // For development
-///     onDeferredLink: (link) => MyRouter.handleDeepLink(link),
+///     onDeepLink: (link) {
+///       // Unified callback for all deep links
+///       final id = extractLinkId(link);
+///       GoRouter.of(context).push('/challenge/$id');
+///     },
 ///     onError: (error) => Analytics.trackError(error),
 ///     onAttributionData: (data) => Analytics.trackAttribution(data),
 ///   ),
@@ -61,13 +69,13 @@ class FlutterAwesomeDeeplink {
   /// Internal service instance
   static DeferredDeepLinksService? _service;
 
-  /// Initialize the deferred deep links plugin
+  /// Initialize the Flutter Awesome Deeplink plugin
   ///
   /// This should be called early in your app's lifecycle, typically in main()
   /// or during app initialization.
   ///
   /// **Parameters**:
-  /// - `config`: Configuration for deferred link attribution
+  /// - `config`: Configuration for unified deep link handling (both normal and deferred)
   ///
   /// **Example**:
   /// ```dart
@@ -75,7 +83,7 @@ class FlutterAwesomeDeeplink {
   ///   config: DeferredLinkConfig(
   ///     appScheme: 'myapp',
   ///     validDomains: ['myapp.com'],
-  ///     onDeferredLink: (link) => handleDeepLink(link),
+  ///     onDeepLink: (link) => handleDeepLink(link),
   ///   ),
   /// );
   /// ```

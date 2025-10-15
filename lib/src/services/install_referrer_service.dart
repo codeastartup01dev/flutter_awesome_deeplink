@@ -242,7 +242,7 @@ class InstallReferrerService {
       }
 
       // Method 1: Enhanced clipboard checking (if enabled)
-      if (config.enableIOSClipboard) {
+      if (config.enableDeferredLinkForIOS) {
         final clipboardData = await _checkIOSClipboard();
         if (clipboardData != null) {
           return clipboardData;
@@ -637,7 +637,7 @@ class InstallReferrerService {
         'isEligibleForDeferredLink': await _isEligibleForDeferredLinkCheck(),
         'configuredAppScheme': config.appScheme,
         'configuredDomains': config.validDomains,
-        'iosClipboardEnabled': config.enableIOSClipboard,
+        'iosClipboardEnabled': config.enableDeferredLinkForIOS,
         'maxLinkAgeHours': config.maxLinkAge.inHours,
       };
 

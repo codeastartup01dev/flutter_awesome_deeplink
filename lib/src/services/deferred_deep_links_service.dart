@@ -36,7 +36,10 @@ class DeferredDeepLinksService {
     _installReferrerService = InstallReferrerService(config);
 
     _logger.i('Initialized for ${Platform.operatingSystem}');
-    _logger.i('iOS clipboard enabled: ${config.enableIOSClipboard}');
+    _logger.i(
+      'Android deferred links enabled: ${config.enableDeferredLinkForAndroid}',
+    );
+    _logger.i('iOS deferred links enabled: ${config.enableDeferredLinkForIOS}');
   }
 
   /// Initialize the deferred deep links service
@@ -101,8 +104,8 @@ class DeferredDeepLinksService {
       String? deferredLink;
       String source = 'none';
 
-      if (Platform.isAndroid) {
-        // 🤖 ANDROID STRATEGY: Prioritize Install Referrer API
+      if (Platform.isAndroid && config.enableDeferredLinkForAndroid) {
+        // 🤖 ANDROID STRATEGY: Prioritize Install Referrer API (when enabled)
         if (config.enableLogging) {
           print(
             'DeferredDeepLinksService: Using Android-optimized attribution strategy',
@@ -131,7 +134,7 @@ class DeferredDeepLinksService {
             }
           }
         }
-      } else if (Platform.isIOS) {
+      } else if (Platform.isIOS && config.enableDeferredLinkForIOS) {
         // 🍎 iOS STRATEGY: Clipboard (if enabled) → Storage Service fallback
         if (config.enableLogging) {
           print(
@@ -140,21 +143,15 @@ class DeferredDeepLinksService {
         }
 
         // 1. PRIMARY: Install Referrer/Clipboard (90%+ success rate when enabled)
-        if (config.enableIOSClipboard) {
-          deferredLink = await _installReferrerService
-              .extractDeferredLinkFromReferrer();
-          if (deferredLink != null) {
-            source = 'ios_clipboard';
-            if (config.enableLogging) {
-              print(
-                'DeferredDeepLinksService: ✅ iOS clipboard attribution successful',
-              );
-            }
+        deferredLink = await _installReferrerService
+            .extractDeferredLinkFromReferrer();
+        if (deferredLink != null) {
+          source = 'ios_clipboard';
+          if (config.enableLogging) {
+            print(
+              'DeferredDeepLinksService: ✅ iOS clipboard attribution successful',
+            );
           }
-        } else if (config.enableLogging) {
-          print(
-            'DeferredDeepLinksService: iOS clipboard disabled - skipping to storage fallback',
-          );
         }
 
         // 2. FALLBACK: Storage Service for iOS
@@ -170,10 +167,15 @@ class DeferredDeepLinksService {
           }
         }
       } else {
-        // 🌐 OTHER PLATFORMS: Use storage service as primary
+        // 🌐 OTHER PLATFORMS or deferred links disabled: Use storage service only
         if (config.enableLogging) {
+          final platformMsg = Platform.isAndroid
+              ? 'Android deferred links disabled'
+              : Platform.isIOS
+              ? 'iOS deferred links disabled'
+              : 'Other platform detected';
           print(
-            'DeferredDeepLinksService: Using storage-first strategy for ${Platform.operatingSystem}',
+            'DeferredDeepLinksService: $platformMsg - checking storage only',
           );
         }
 
@@ -306,9 +308,7 @@ class DeferredDeepLinksService {
           );
         }
       } else if (config.enableLogging) {
-        print(
-          'DeferredDeepLinksService: ⚠️ No onDeferredLink callback configured',
-        );
+        print('DeferredDeepLinksService: ⚠️ No onDeepLink callback configured');
       }
 
       // Mark this link as processed
@@ -445,7 +445,7 @@ class DeferredDeepLinksService {
           'appScheme': config.appScheme,
           'validDomains': config.validDomains,
           'validPaths': config.validPaths,
-          'enableIOSClipboard': config.enableIOSClipboard,
+          'enableDeferredLinkForIOS': config.enableDeferredLinkForIOS,
           'maxLinkAgeHours': config.maxLinkAge.inHours,
           'enableLogging': config.enableLogging,
         },
