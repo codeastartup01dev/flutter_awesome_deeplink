@@ -20,7 +20,7 @@ void main() {
     test('should validate deep links correctly', () async {
       // Initialize with test configuration
       await FlutterAwesomeDeeplink.initialize(
-        normalConfig: NormalDeepLinkConfig(
+        config: DeferredLinkConfig(
           appScheme: 'testapp',
           validDomains: ['test.com'],
           validPaths: ['/app/'],
@@ -60,7 +60,7 @@ void main() {
 
     test('should extract link parameters correctly', () async {
       await FlutterAwesomeDeeplink.initialize(
-        normalConfig: NormalDeepLinkConfig(
+        config: DeferredLinkConfig(
           appScheme: 'testapp',
           validDomains: ['test.com'],
         ),
@@ -79,7 +79,7 @@ void main() {
 
     test('should handle deferred link storage', () async {
       await FlutterAwesomeDeeplink.initialize(
-        normalConfig: NormalDeepLinkConfig(
+        config: DeferredLinkConfig(
           appScheme: 'testapp',
           validDomains: ['test.com'],
         ),
@@ -108,7 +108,7 @@ void main() {
 
     test('should provide attribution metadata', () async {
       await FlutterAwesomeDeeplink.initialize(
-        normalConfig: NormalDeepLinkConfig(
+        config: DeferredLinkConfig(
           appScheme: 'testapp',
           validDomains: ['test.com'],
         ),

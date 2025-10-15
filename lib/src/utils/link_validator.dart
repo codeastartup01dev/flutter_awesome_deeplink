@@ -1,4 +1,3 @@
-import '../models/normal_deep_link_config.dart';
 import '../models/deferred_link_config.dart';
 
 /// Utility class for validating deep links against configuration
@@ -8,33 +7,9 @@ import '../models/deferred_link_config.dart';
 /// - Web-based links (https://myapp.com/app/content?id=123)
 /// - Pattern-based fallback validation
 class LinkValidator {
-  final String appScheme;
-  final List<String> validDomains;
-  final List<String> validPaths;
+  final DeferredLinkConfig config;
 
-  const LinkValidator({
-    required this.appScheme,
-    required this.validDomains,
-    required this.validPaths,
-  });
-
-  /// Create LinkValidator from NormalDeepLinkConfig
-  factory LinkValidator.fromNormalConfig(NormalDeepLinkConfig config) {
-    return LinkValidator(
-      appScheme: config.appScheme,
-      validDomains: config.validDomains,
-      validPaths: config.validPaths,
-    );
-  }
-
-  /// Create LinkValidator from DeferredLinkConfig
-  factory LinkValidator.fromDeferredConfig(DeferredLinkConfig config) {
-    return LinkValidator(
-      appScheme: config.appScheme,
-      validDomains: config.validDomains,
-      validPaths: config.validPaths,
-    );
-  }
+  const LinkValidator(this.config);
 
   /// Validate if a link matches the configured criteria
   ///
@@ -53,7 +28,7 @@ class LinkValidator {
       final uri = Uri.parse(link);
 
       // 1. Custom scheme validation (e.g., myapp://content?id=123)
-      if (uri.scheme == appScheme) {
+      if (uri.scheme == config.appScheme) {
         return _validateCustomScheme(uri);
       }
 
@@ -65,7 +40,9 @@ class LinkValidator {
       // 3. Pattern-based fallback validation
       return _validateByPatterns(link);
     } catch (e) {
-      // Note: Logging removed since we don't have enableLogging in the validator anymore
+      if (config.enableLogging) {
+        print('LinkValidator: Error parsing link "$link": $e');
+      }
       return false;
     }
   }
@@ -84,23 +61,41 @@ class LinkValidator {
           uri.queryParameters['id']?.isNotEmpty == true;
 
       if (!hasRequiredId) {
+        if (config.enableLogging) {
+          print(
+            'LinkValidator: Custom scheme missing required ID parameter: ${uri.toString()}',
+          );
+        }
         return false;
       }
 
       // Optional: Validate host against configured paths
-      if (validPaths.isNotEmpty && uri.host.isNotEmpty) {
-        final hasValidHost = validPaths.any(
+      if (config.validPaths.isNotEmpty && uri.host.isNotEmpty) {
+        final hasValidHost = config.validPaths.any(
           (path) =>
               path.replaceAll('/', '').toLowerCase() == uri.host.toLowerCase(),
         );
 
         if (!hasValidHost) {
+          if (config.enableLogging) {
+            print(
+              'LinkValidator: Custom scheme host "${uri.host}" not in valid paths: ${config.validPaths}',
+            );
+          }
           return false;
         }
       }
 
+      if (config.enableLogging) {
+        print(
+          'LinkValidator: ✅ Valid custom scheme deep link: ${uri.toString()}',
+        );
+      }
       return true;
     } catch (e) {
+      if (config.enableLogging) {
+        print('LinkValidator: Error validating custom scheme: $e');
+      }
       return false;
     }
   }
@@ -115,16 +110,26 @@ class LinkValidator {
   bool _validateWebLink(Uri uri) {
     try {
       // Check if domain is valid
-      if (!validDomains.contains(uri.host)) {
+      if (!config.validDomains.contains(uri.host)) {
+        if (config.enableLogging) {
+          print(
+            'LinkValidator: Domain "${uri.host}" not in valid domains: ${config.validDomains}',
+          );
+        }
         return false;
       }
 
       // Check if path matches valid patterns
-      final hasValidPath = validPaths.any(
+      final hasValidPath = config.validPaths.any(
         (validPath) => uri.path.contains(validPath),
       );
 
       if (!hasValidPath) {
+        if (config.enableLogging) {
+          print(
+            'LinkValidator: Path "${uri.path}" does not match valid paths: ${config.validPaths}',
+          );
+        }
         return false;
       }
 
@@ -134,11 +139,22 @@ class LinkValidator {
           uri.queryParameters['id']?.isNotEmpty == true;
 
       if (!hasRequiredId) {
+        if (config.enableLogging) {
+          print(
+            'LinkValidator: Web link missing required ID parameter: ${uri.toString()}',
+          );
+        }
         return false;
       }
 
+      if (config.enableLogging) {
+        print('LinkValidator: ✅ Valid web deep link: ${uri.toString()}');
+      }
       return true;
     } catch (e) {
+      if (config.enableLogging) {
+        print('LinkValidator: Error validating web link: $e');
+      }
       return false;
     }
   }
@@ -152,19 +168,29 @@ class LinkValidator {
       // Create validation patterns based on configuration
       final patterns = <RegExp>[
         // Custom scheme patterns
-        RegExp('${appScheme}://\\w+\\?id=\\w+'),
+        RegExp('${config.appScheme}://\\w+\\?id=\\w+'),
 
         // Web link patterns for each valid domain and path combination
-        ...validDomains.expand(
-          (domain) => validPaths.map(
+        ...config.validDomains.expand(
+          (domain) => config.validPaths.map(
             (path) => RegExp('https?://$domain${RegExp.escape(path)}.*id=\\w+'),
           ),
         ),
       ];
 
       final hasValidPattern = patterns.any((pattern) => pattern.hasMatch(link));
+
+      if (hasValidPattern && config.enableLogging) {
+        print('LinkValidator: ✅ Valid pattern-based deep link: $link');
+      } else if (config.enableLogging) {
+        print('LinkValidator: ❌ No matching patterns for link: $link');
+      }
+
       return hasValidPattern;
     } catch (e) {
+      if (config.enableLogging) {
+        print('LinkValidator: Error in pattern validation: $e');
+      }
       return false;
     }
   }
@@ -188,6 +214,9 @@ class LinkValidator {
       final uri = Uri.parse(link);
       return uri.queryParameters['id'];
     } catch (e) {
+      if (config.enableLogging) {
+        print('LinkValidator: Error extracting ID from link "$link": $e');
+      }
       return null;
     }
   }
@@ -206,6 +235,11 @@ class LinkValidator {
       final uri = Uri.parse(link);
       return uri.queryParameters;
     } catch (e) {
+      if (config.enableLogging) {
+        print(
+          'LinkValidator: Error extracting parameters from link "$link": $e',
+        );
+      }
       return {};
     }
   }
@@ -215,14 +249,15 @@ class LinkValidator {
   /// Returns detailed information about what would be validated
   Map<String, dynamic> getValidationSummary() {
     return {
-      'appScheme': appScheme,
-      'validDomains': validDomains,
-      'validPaths': validPaths,
-      'customSchemePattern': '${appScheme}://host?id=value',
-      'webLinkPatterns': validDomains
+      'appScheme': config.appScheme,
+      'validDomains': config.validDomains,
+      'validPaths': config.validPaths,
+      'customSchemePattern': '${config.appScheme}://host?id=value',
+      'webLinkPatterns': config.validDomains
           .expand(
-            (domain) =>
-                validPaths.map((path) => 'https://$domain$path?id=value'),
+            (domain) => config.validPaths.map(
+              (path) => 'https://$domain$path?id=value',
+            ),
           )
           .toList(),
     };

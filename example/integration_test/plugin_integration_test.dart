@@ -18,7 +18,7 @@ void main() {
     testWidgets('plugin initialization test', (WidgetTester tester) async {
       // Test plugin initialization
       await FlutterAwesomeDeeplink.initialize(
-        normalConfig: NormalDeepLinkConfig(
+        config: DeferredLinkConfig(
           appScheme: 'testapp',
           validDomains: ['test.com'],
           enableLogging: true,
@@ -32,7 +32,7 @@ void main() {
       // Ensure plugin is initialized
       if (!FlutterAwesomeDeeplink.isInitialized) {
         await FlutterAwesomeDeeplink.initialize(
-          normalConfig: NormalDeepLinkConfig(
+          config: DeferredLinkConfig(
             appScheme: 'testapp',
             validDomains: ['test.com'],
           ),
@@ -56,7 +56,7 @@ void main() {
       // Ensure plugin is initialized
       if (!FlutterAwesomeDeeplink.isInitialized) {
         await FlutterAwesomeDeeplink.initialize(
-          normalConfig: NormalDeepLinkConfig(
+          config: DeferredLinkConfig(
             appScheme: 'testapp',
             validDomains: ['test.com'],
             validPaths: ['/app/'],
@@ -93,7 +93,7 @@ void main() {
       // Ensure plugin is initialized
       if (!FlutterAwesomeDeeplink.isInitialized) {
         await FlutterAwesomeDeeplink.initialize(
-          normalConfig: NormalDeepLinkConfig(
+          config: DeferredLinkConfig(
             appScheme: 'testapp',
             validDomains: ['test.com'],
           ),
@@ -113,7 +113,7 @@ void main() {
       // Ensure plugin is initialized
       if (!FlutterAwesomeDeeplink.isInitialized) {
         await FlutterAwesomeDeeplink.initialize(
-          normalConfig: NormalDeepLinkConfig(
+          config: DeferredLinkConfig(
             appScheme: 'testapp',
             validDomains: ['test.com'],
           ),
