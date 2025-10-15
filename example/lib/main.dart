@@ -1,10 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_awesome_deeplink/flutter_awesome_deeplink.dart';
 
+// Example: Create a simple logger for demonstration
+// In a real app, you would use flutter_awesome_logger or your preferred logging solution
+class ExampleLogger {
+  void d(String message) => print('🔍 DEBUG: $message');
+  void i(String message) => print('ℹ️ INFO: $message');
+  void w(String message) => print('⚠️ WARNING: $message');
+  void e(String message, {dynamic error, StackTrace? stackTrace}) {
+    print('❌ ERROR: $message');
+    if (error != null) print('Error details: $error');
+  }
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Initialize the deferred deep links plugin
+  // Create logger instance (in real app, use flutter_awesome_logger)
+  final logger = ExampleLogger();
+
+  // Initialize the deferred deep links plugin with unified logger
   await FlutterAwesomeDeeplink.initialize(
     config: DeferredLinkConfig(
       appScheme: 'awesomedeeplink',
@@ -13,19 +28,21 @@ void main() async {
       enableDeferredLinkForIOS: true, // Enable for demo purposes
       maxLinkAge: Duration(days: 7),
       enableLogging: true, // Enable for demo
+      externalLogger:
+          logger, // 🎯 Pass your logger instance for unified logging
       onDeepLink: (link) {
         // Handle deferred link - this would typically navigate to content
-        print('📱 Deferred link received: $link');
+        logger.i('Deferred link received: $link');
         // In a real app, you might do:
         // MyRouter.handleDeepLink(link);
         // or
         // GoRouter.of(context).push('/content?id=${extractId(link)}');
       },
       onError: (error) {
-        print('❌ Deferred link error: $error');
+        logger.e('Deferred link error: $error');
       },
       onAttributionData: (data) {
-        print('📊 Attribution data: $data');
+        logger.i('Attribution data: $data');
       },
     ),
   );

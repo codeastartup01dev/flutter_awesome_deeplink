@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/deferred_link_config.dart';
 import '../utils/link_validator.dart';
-import '../utils/logger.dart';
+import '../utils/plugin_logger.dart';
 import 'deferred_link_storage_service.dart';
 import 'install_referrer_service.dart';
 
@@ -30,7 +30,10 @@ class DeferredDeepLinksService {
   String? _lastProcessedLink;
 
   DeferredDeepLinksService(this.config) {
-    _logger = PluginLogger(enableLogging: config.enableLogging);
+    _logger = PluginLogger(
+      enableLogging: config.enableLogging,
+      externalLogger: config.externalLogger,
+    );
     _linkValidator = LinkValidator(config);
     _storageService = DeferredLinkStorageService(config);
     _installReferrerService = InstallReferrerService(config);

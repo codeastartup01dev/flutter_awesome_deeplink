@@ -56,6 +56,7 @@ library flutter_awesome_deeplink;
 export 'src/models/deferred_link_config.dart';
 export 'src/services/deferred_deep_links_service.dart';
 export 'src/utils/link_validator.dart';
+export 'src/utils/plugin_logger.dart';
 
 import 'src/models/deferred_link_config.dart';
 import 'src/services/deferred_deep_links_service.dart';

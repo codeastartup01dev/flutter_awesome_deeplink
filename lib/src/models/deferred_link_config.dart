@@ -90,6 +90,24 @@ class DeferredLinkConfig {
   /// **Development**: Set to true for detailed attribution flow logs
   final bool enableLogging;
 
+  /// External logger instance for unified logging
+  ///
+  /// If provided, the plugin will use this logger instead of print statements.
+  /// This allows for unified logging with your app's logger system.
+  ///
+  /// **Usage**:
+  /// ```dart
+  /// import 'package:flutter_awesome_logger/flutter_awesome_logger.dart';
+  ///
+  /// final logger = FlutterAwesomeLogger.loggingUsingLogger;
+  ///
+  /// DeferredLinkConfig(
+  ///   // ... other config
+  ///   externalLogger: logger,
+  /// )
+  /// ```
+  final dynamic externalLogger;
+
   /// Timeout duration for platform-specific attribution methods
   ///
   /// **Default**: 10 seconds
@@ -118,6 +136,7 @@ class DeferredLinkConfig {
   ///   maxLinkAge: Duration(days: 14),
   ///   storageKeyPrefix: 'myapp_deferred_',
   ///   enableLogging: true, // For development
+  ///   externalLogger: logger, // Use your app's logger instance
   ///   onDeepLink: (link) => MyRouter.handleDeepLink(link),
   ///   onError: (error) => Analytics.trackError(error),
   ///   onAttributionData: (data) => Analytics.trackAttribution(data),
@@ -135,6 +154,7 @@ class DeferredLinkConfig {
     this.onError,
     this.onAttributionData,
     this.enableLogging = false,
+    this.externalLogger,
     this.attributionTimeout = const Duration(seconds: 10),
   });
 
@@ -151,6 +171,7 @@ class DeferredLinkConfig {
     Function(String)? onError,
     Function(Map<String, dynamic>)? onAttributionData,
     bool? enableLogging,
+    dynamic externalLogger,
     Duration? attributionTimeout,
   }) {
     return DeferredLinkConfig(
@@ -167,6 +188,7 @@ class DeferredLinkConfig {
       onError: onError ?? this.onError,
       onAttributionData: onAttributionData ?? this.onAttributionData,
       enableLogging: enableLogging ?? this.enableLogging,
+      externalLogger: externalLogger ?? this.externalLogger,
       attributionTimeout: attributionTimeout ?? this.attributionTimeout,
     );
   }
