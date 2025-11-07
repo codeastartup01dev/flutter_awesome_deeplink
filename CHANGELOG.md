@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2025-11-07
+
+### Added
+- 🚀 **Complete Deep Link Coverage** - Unified normal and deferred deep link handling
+- 🔗 **Normal Deep Links Service** - Real-time deep link processing using app_links
+- 🎯 **UnifiedDeepLinksService** - Orchestrates both normal and deferred deep links
+- 📝 **Enhanced Documentation** - Updated README with unified approach examples
+- 🛠️ **Improved API** - Single initialization handles both deep link types
+- 🔧 **Better Logging** - External logger integration for unified app logging
+- 📊 **Enhanced Attribution** - Rich metadata for both normal and deferred links
+- 🧪 **Testing Utilities** - Clear last processed links for testing scenarios
+
+### Changed
+- 📦 **API Enhancement** - Main `initialize()` method now handles both normal and deferred deep links
+- 🔄 **Service Architecture** - Refactored to use unified service pattern
+- 📖 **Documentation** - Updated all examples to show unified approach
+
+### Fixed
+- 🎯 **Complete Coverage** - No more "no deeplink found" issues for normal deep links
+- 🔄 **Unified Callback** - Same handler processes both normal and deferred deep links
+- ⚡ **Performance** - Optimized initialization sequence for better app startup
+
+### Technical Details
+- **New Services**: `NormalDeepLinksService`, `UnifiedDeepLinksService`
+- **Enhanced Features**:
+  - Real-time deep link handling via app_links integration
+  - Unified callback system for both link types
+  - Improved error handling and validation
+  - Better platform-specific optimization
+- **API Changes**:
+  - `FlutterAwesomeDeeplink.instance` now returns `UnifiedDeepLinksService`
+  - Single `initialize()` call handles complete deep link lifecycle
+  - Enhanced configuration options for both link types
+
 ## [0.0.2] - 2025-10-15
 
 ### Added

@@ -4,22 +4,23 @@
 [![Platform](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20Web-blue.svg)](https://pub.dev/packages/flutter_awesome_deeplink)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-**Platform-optimized deferred deep links for Flutter with 96%+ attribution success rates.**
+**Complete deep linking solution for Flutter with 96%+ attribution success rates.**
 
-A comprehensive Flutter plugin that provides reliable deferred deep link attribution without the complexity and cost of third-party services like Branch.io or AppsFlyer.
+A comprehensive Flutter plugin that handles BOTH normal and deferred deep links with reliable attribution, without the complexity and cost of third-party services like Branch.io or AppsFlyer.
 
 ## 🚀 Key Features
 
+- **🎯 Complete Coverage**: Handles BOTH normal and deferred deep links
 - **🤖 Android**: Install Referrer API (95%+ success rate)
 - **🍎 iOS**: Optional clipboard detection (90%+ success rate when enabled)
 - **🔗 Normal Deep Links**: Real-time deep link handling using app_links
+- **🔄 Unified Navigation**: Single callback handles both link types
 - **🔒 Privacy-first**: iOS clipboard checking is opt-in
 - **🌐 Cross-platform**: Works on Android, iOS, and Web
 - **⚡ High performance**: Minimal overhead and fast attribution
 - **🛡️ Production-ready**: Comprehensive error handling and logging
 - **📊 Analytics-ready**: Rich attribution metadata for optimization
 - **🎯 Self-hosted**: No vendor lock-in, full control over your data
-- **🔄 Unified Navigation**: Single callback handles both normal and deferred deep links
 - **📝 Logger Integration**: Works with flutter_awesome_logger and custom loggers
 
 ## 📊 Success Rates
@@ -57,7 +58,7 @@ Add to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  flutter_awesome_deeplink: ^0.0.1
+  flutter_awesome_deeplink: ^0.1.0
 ```
 
 ### 2. Basic Setup
