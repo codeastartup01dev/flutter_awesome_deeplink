@@ -116,8 +116,8 @@ class DeferredDeepLinksService {
         }
 
         // 1. PRIMARY: Install Referrer API (95%+ success rate)
-        deferredLink = await _installReferrerService
-            .extractDeferredLinkFromReferrer();
+        deferredLink =
+            await _installReferrerService.extractDeferredLinkFromReferrer();
         if (deferredLink != null) {
           source = 'android_install_referrer';
           if (config.enableLogging) {
@@ -146,8 +146,8 @@ class DeferredDeepLinksService {
         }
 
         // 1. PRIMARY: Install Referrer/Clipboard (90%+ success rate when enabled)
-        deferredLink = await _installReferrerService
-            .extractDeferredLinkFromReferrer();
+        deferredLink =
+            await _installReferrerService.extractDeferredLinkFromReferrer();
         if (deferredLink != null) {
           source = 'ios_clipboard';
           if (config.enableLogging) {
@@ -175,8 +175,8 @@ class DeferredDeepLinksService {
           final platformMsg = Platform.isAndroid
               ? 'Android deferred links disabled'
               : Platform.isIOS
-              ? 'iOS deferred links disabled'
-              : 'Other platform detected';
+                  ? 'iOS deferred links disabled'
+                  : 'Other platform detected';
           print(
             'DeferredDeepLinksService: $platformMsg - checking storage only',
           );
@@ -437,8 +437,8 @@ class DeferredDeepLinksService {
   /// Useful for debugging, analytics, and monitoring.
   Future<Map<String, dynamic>> getAttributionMetadata() async {
     try {
-      final installReferrerMetadata = await _installReferrerService
-          .getAttributionMetadata();
+      final installReferrerMetadata =
+          await _installReferrerService.getAttributionMetadata();
       final storageMetadata = await _storageService.getStoredLinkMetadata();
 
       return {

@@ -67,7 +67,7 @@ class DeferredLinkConfig {
   /// ```dart
   /// onError: (error) {
   ///   Analytics.track('deferred_link_error', {'error': error});
-  ///   print('Deferred link error: $error');
+  ///   _logger.i('Deferred link error: $error');
   /// }
   /// ```
   final Function(String error)? onError;
@@ -77,9 +77,9 @@ class DeferredLinkConfig {
   /// Provides detailed information about the attribution process:
   /// ```dart
   /// onAttributionData: (data) {
-  ///   print('Attribution source: ${data['source']}');
-  ///   print('Platform: ${data['platform']}');
-  ///   print('Success: ${data['success']}');
+  ///   _logger.i('Attribution source: ${data['source']}');
+  ///   _logger.i('Platform: ${data['platform']}');
+  ///   _logger.i('Success: ${data['success']}');
   /// }
   /// ```
   final Function(Map<String, dynamic> data)? onAttributionData;

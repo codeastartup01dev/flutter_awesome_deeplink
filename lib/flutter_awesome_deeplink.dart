@@ -55,11 +55,13 @@ library flutter_awesome_deeplink;
 // Export public API
 export 'src/models/deferred_link_config.dart';
 export 'src/services/deferred_deep_links_service.dart';
+export 'src/services/normal_deep_links_service.dart';
+export 'src/services/unified_deep_links_service.dart';
 export 'src/utils/link_validator.dart';
 export 'src/utils/plugin_logger.dart';
 
 import 'src/models/deferred_link_config.dart';
-import 'src/services/deferred_deep_links_service.dart';
+import 'src/services/unified_deep_links_service.dart';
 
 /// Main plugin class providing a simple static API
 ///
@@ -67,13 +69,17 @@ import 'src/services/deferred_deep_links_service.dart';
 /// use cases while still allowing access to the underlying service classes
 /// for advanced usage.
 class FlutterAwesomeDeeplink {
-  /// Internal service instance
-  static DeferredDeepLinksService? _service;
+  /// Internal unified service instance (handles both normal and deferred deep links)
+  static UnifiedDeepLinksService? _service;
 
   /// Initialize the Flutter Awesome Deeplink plugin
   ///
+  /// This initializes BOTH normal and deferred deep link handling:
+  /// - **Normal Deep Links**: Real-time links when app is running
+  /// - **Deferred Deep Links**: Post-install attribution
+  ///
   /// This should be called early in your app's lifecycle, typically in main()
-  /// or during app initialization.
+  /// or during app initialization (after user authentication for best results).
   ///
   /// **Parameters**:
   /// - `config`: Configuration for unified deep link handling (both normal and deferred)
@@ -84,14 +90,17 @@ class FlutterAwesomeDeeplink {
   ///   config: DeferredLinkConfig(
   ///     appScheme: 'myapp',
   ///     validDomains: ['myapp.com'],
-  ///     onDeepLink: (link) => handleDeepLink(link),
+  ///     onDeepLink: (link) {
+  ///       // Handles BOTH normal and deferred deep links
+  ///       AutoNavigation.handleDeepLink(link);
+  ///     },
   ///   ),
   /// );
   /// ```
   ///
   /// **Throws**: Exception if initialization fails
   static Future<void> initialize({required DeferredLinkConfig config}) async {
-    _service = DeferredDeepLinksService(config);
+    _service = UnifiedDeepLinksService(config);
     await _service!.initialize();
   }
 
@@ -105,7 +114,7 @@ class FlutterAwesomeDeeplink {
   /// final service = FlutterAwesomeDeeplink.instance;
   /// final metadata = await service.getAttributionMetadata();
   /// ```
-  static DeferredDeepLinksService get instance {
+  static UnifiedDeepLinksService get instance {
     if (_service == null) {
       throw StateError(
         'FlutterAwesomeDeeplink has not been initialized. '
